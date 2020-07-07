@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <iostream>
 
-namespace ADT {
+namespace adt {
 
     template<typename T>
     struct SetNode {
@@ -32,31 +32,37 @@ namespace ADT {
     };
 
     template<typename T>
-    class SetIterator : public std::iterator<std::bidirectional_iterator_tag, T, std::ptrdiff_t , T*, T&> {
+    class set_iterator : public std::iterator<std::bidirectional_iterator_tag, T, std::ptrdiff_t , T*, T&> {
     public:
         using const_data_reference = const T&;
         using const_data_pointer = const T*;
         
-        SetIterator(SetNode<T>* rhs = nullptr) : ptr(rhs) {}
-        SetIterator(const SetIterator<T>& rhs) = default;
-        SetIterator<T>& operator=(const SetIterator<T>& rhs) = default;
-        SetIterator<T>& operator=(SetNode<T>* rhs) {
+        set_iterator(SetNode<T>* rhs = nullptr) : ptr(rhs) {}
+        set_iterator(const set_iterator<T>& rhs) = default;
+        set_iterator<T>& operator=(const set_iterator<T>& rhs) = default;
+        set_iterator<T>& operator=(SetNode<T>* rhs) {
             this->ptr = rhs;
             return *this;
         }
-        
-        bool operator==(const SetIterator<T>& rhs) const {
+
+        bool operator==(const set_iterator<T>& rhs) const {
             return this->ptr == rhs.ptr;
         }
-        
-        bool operator!=(const SetIterator<T>& rhs) const {
+        bool operator!=(const set_iterator<T>& rhs) const {
             return !(*this == rhs);
         }
-    
-        /*Inorder successor algorithm*/
-        SetIterator<T> operator++() {
+
+        const_data_reference operator*() {
+            return this->ptr->data;
+        }
+        const_data_pointer operator->() {
+            return &(this->ptr->data);
+        }
+
+        /* Inorder successor algorithm. */
+        set_iterator<T>& operator++() {
             if (this->ptr == nullptr) {
-                return SetIterator<T>();
+                return *this;
             }
             SetNode<T>* current;
             if (this->ptr->right) {
@@ -76,22 +82,17 @@ namespace ADT {
             this->ptr = current;
             return *this;
         }
-        
-        SetIterator<T> operator++(int) {
-            if (this->ptr == nullptr) {
-                return SetIterator<T>();
-            }
-
-            SetIterator<T> tmp(*this);
+        set_iterator<T> operator++(int) {
+            set_iterator<T> tmp(*this);
             ++(*this);
 
             return tmp;
         }
         
-        /*Inorder predecessor algorithm*/
-        SetIterator<T> operator--() {
+        /* Inorder predecessor algorithm. */
+        set_iterator<T>& operator--() {
             if (this->ptr == nullptr) {
-                return SetIterator<T>();
+                return *this;
             }
 
             SetNode<T>* current;
@@ -112,42 +113,14 @@ namespace ADT {
             this->ptr = current;
             return *this;
         }
-        
-        SetIterator<T> operator--(int) {
-            if (this->ptr == nullptr) {
-                return SetIterator<T>();
-            }
+        set_iterator<T> operator--(int) {
+            set_iterator<T> tmp(*this);
+            --(*this);
 
-            SetIterator<T> tmp(*this);
-
-            SetNode<T>* current;
-            if (this->ptr->left) {
-                current = this->ptr->left;
-                while (current->right != nullptr) {
-                    current = current->right;
-                }
-            }
-            else {
-                current = this->ptr->parent;
-                while (current != nullptr && this->ptr == current->left) {
-                    this->ptr = current;
-                    current = current->parent;
-                }
-            }
-
-            this->ptr = current;
-            return tmp;
-        }
-
-        const_data_reference operator*() {
-            return this->ptr->data;
+            return tmp;    
         }
         
-        const_data_pointer operator->() {
-            return &(this->ptr->data);
-        }        
-        
-        void swap(SetIterator<T>& lhs, SetIterator<T>& rhs) {
+        void swap(set_iterator<T>& lhs, set_iterator<T>& rhs) {
             std::swap(lhs, rhs);
         }
 
@@ -164,7 +137,7 @@ namespace ADT {
     };
 
     template<typename T, class Less = std::less<T>>
-    class Set {
+    class set {
     private:
         enum {
             RED,
@@ -191,29 +164,30 @@ namespace ADT {
         void restore_balance(SetNode<T>*, int8_t type);
         void tree_destroy(SetNode<T> *);
     public:
-        Set() noexcept;
-        Set(const Set& rhs) noexcept;
-        Set(Set&& rhs) noexcept;
-        ~Set();
+        set() noexcept;
+        set(const set& rhs) noexcept;
+        set(set&& rhs) noexcept;
+        ~set();
 
-        Set& operator=(Set x);
+        set& operator=(set x);
+
         bool add(const T& data);
         bool add(T&& data);
         bool remove(const T& key);
-        SetIterator<T> remove(SetIterator<T> itr);
+        set_iterator<T> remove(set_iterator<T> itr);
         void clear() noexcept;
         void clear() const noexcept;
 
         bool empty();
         size_t size();
 
-        SetIterator<T> begin();
-        SetIterator<T> end();
-        SetIterator<T> search(const T& key);
-        SetIterator<T> lower_bound(const T& val);
-        SetIterator<T> upper_bound(const T& val);
+        set_iterator<T> begin();
+        set_iterator<T> end();
+        set_iterator<T> search(const T& key);
+        set_iterator<T> lower_bound(const T& val);
+        set_iterator<T> upper_bound(const T& val);
 
-        friend void swap(Set& lhs, Set& rhs) {
+        friend void swap(set& lhs, set& rhs) {
             using std::swap;
 
             swap(lhs.root, rhs.root);
@@ -266,7 +240,7 @@ namespace ADT {
 
     template<typename T>
     static inline char _set_color_of(SetNode<T> *node) {
-        return node ? node->color : (int8_t) ADT::SetNode<T>::BLACK;
+        return node ? node->color : (int8_t) SetNode<T>::BLACK;
     }
 
     #define set_balance_insertion(side, rotate_1, rotate_2)         \
@@ -326,10 +300,10 @@ namespace ADT {
     } while(0)
 
     template<typename T, class Less>
-    Set<T, Less>::Set() noexcept : root(nullptr), endNode(nullptr) , _size(0) {}
+    set<T, Less>::set() noexcept : root(nullptr), endNode(nullptr) , _size(0) {}
 
     template<typename T, class Less>
-    SetNode<T>* Set<T, Less>::_copy_tree(SetNode<T>* other_root) {
+    SetNode<T>* set<T, Less>::_copy_tree(SetNode<T>* other_root) {
         if (other_root == nullptr) {
             return nullptr;
         }
@@ -350,7 +324,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    Set<T, Less>::Set(const Set& other) noexcept {
+    set<T, Less>::set(const set& other) noexcept {
         /*Create an exact copy of this set, O(n)*/
         this->root = _copy_tree(other.root);
         this->endNode = new SetNode<T>();
@@ -359,12 +333,12 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    Set<T, Less>::Set(Set&& other) noexcept : Set() {
+    set<T, Less>::set(set&& other) noexcept : set() {
         swap(*this, other);
     }
 
     template<typename T, class Less>
-    Set<T, Less>& Set<T, Less>::operator=(Set other) {
+    set<T, Less>& set<T, Less>::operator=(set other) {
         /*Copy and swap idiom, let the compiler handle the copy of the argument*/
         swap(*this, other);
 
@@ -372,7 +346,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    void Set<T, Less>::tree_destroy(SetNode<T> *current) {
+    void set<T, Less>::tree_destroy(SetNode<T> *current) {
 
         if (!current) {
             return;
@@ -385,7 +359,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    Set<T, Less>::~Set() {
+    set<T, Less>::~set() {
         if (this->root) {
             tree_destroy(this->root);
             delete this->endNode;
@@ -393,7 +367,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    SetNode<T> *Set<T, Less>::bst_insert(bool &added_new, const T &data) {
+    SetNode<T> *set<T, Less>::bst_insert(bool &added_new, const T &data) {
 
         if (empty()) {
             added_new = true;
@@ -441,7 +415,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    SetNode<T> *Set<T, Less>::bst_insert(bool &added_new, T &&data) {
+    SetNode<T> *set<T, Less>::bst_insert(bool &added_new, T &&data) {
 
         if (empty()) {
             added_new = true;
@@ -489,7 +463,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    bool Set<T, Less>::add(const T &data) {
+    bool set<T, Less>::add(const T &data) {
 
         bool added_new;
         SetNode<T> *current = bst_insert(added_new, data);
@@ -509,7 +483,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    bool Set<T, Less>::add(T &&data) {
+    bool set<T, Less>::add(T &&data) {
 
         bool added_new;
         SetNode<T> *current = bst_insert(added_new, std::forward<T>(data));
@@ -529,7 +503,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    void Set<T, Less>::clear() noexcept {
+    void set<T, Less>::clear() noexcept {
         if (this->root) {
             tree_destroy(this->root);
             delete this->endNode;
@@ -540,7 +514,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    void Set<T, Less>::clear() const noexcept {
+    void set<T, Less>::clear() const noexcept {
         if (this->root) {
             tree_destroy(this->root);
             delete this->endNode;
@@ -551,13 +525,13 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    bool Set<T, Less>::empty() {
+    bool set<T, Less>::empty() {
         return this->root == nullptr;
     }
 
 
     template<typename T, class Less>
-    void Set<T, Less>::restore_balance(SetNode<T>* node, int8_t type) {
+    void set<T, Less>::restore_balance(SetNode<T>* node, int8_t type) {
 
         if (type == DELETION) {
             while (node != this->root && set_color_of(node) == BLACK) {
@@ -596,7 +570,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    SetNode<T>* Set<T, Less>::_remove(SetNode<T>* current, SetNode<T>* successor) {
+    SetNode<T>* set<T, Less>::_remove(SetNode<T>* current, SetNode<T>* successor) {
 
         /*If this node is not a leaf and has both children*/
         if (current->left != nullptr && current->right != nullptr) {
@@ -661,26 +635,26 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    SetIterator<T> Set<T, Less>::begin() {
+    set_iterator<T> set<T, Less>::begin() {
         SetNode<T> *current = this->root;
         if (current == nullptr) {
-            return SetIterator<T>();
+            return set_iterator<T>();
         }
         while (current->left != nullptr) {
             current = current->left;
         }
 
-        return SetIterator<T>(current);
+        return set_iterator<T>(current);
     }
 
     template<typename T, class Less>
-    SetIterator<T> Set<T, Less>::end() {
-        return SetIterator<T>(this->endNode);
+    set_iterator<T> set<T, Less>::end() {
+        return set_iterator<T>(this->endNode);
     }
 
 
     template<typename T, class Less>
-    inline bool Set<T, Less>::_is_equal_key(const T& nodeval, const T& val) {
+    inline bool set<T, Less>::_is_equal_key(const T& nodeval, const T& val) {
         if (less(val, nodeval)) {
             return false;
         }
@@ -691,7 +665,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    SetNode<T>* Set<T, Less>::_successor(SetNode<T> *node) {
+    SetNode<T>* set<T, Less>::_successor(SetNode<T> *node) {
         if (node == nullptr) {
             return nullptr;
         }
@@ -714,7 +688,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    SetNode<T>* Set<T, Less>::_find_bound(SetNode<T> *_root, const T &val) {
+    SetNode<T>* set<T, Less>::_find_bound(SetNode<T> *_root, const T &val) {
         if (_root == nullptr) {
             return nullptr;
         }
@@ -732,34 +706,34 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    SetIterator<T> Set<T, Less>::upper_bound(const T& val) {
+    set_iterator<T> set<T, Less>::upper_bound(const T& val) {
         SetNode<T>* retnode = _find_bound(this->root, val);
         if (retnode == nullptr) {
             return this->end();
         }
         else {
             if (_is_equal_key(retnode->data, val)) {
-                return SetIterator<T>(_successor(retnode));
+                return set_iterator<T>(_successor(retnode));
             }
             else {
-                return SetIterator<T>(retnode);
+                return set_iterator<T>(retnode);
             }
         }
     }
 
     template<typename T, class Less>
-    SetIterator<T> Set<T, Less>::lower_bound(const T& val) {
+    set_iterator<T> set<T, Less>::lower_bound(const T& val) {
         SetNode<T> *retnode = _find_bound(this->root, val);
         if (retnode == nullptr) {
             return this->end();
         }
         else {
-            return SetIterator<T>(retnode);
+            return set_iterator<T>(retnode);
         }
     }
 
     template<typename T, class Less>
-    bool Set<T, Less>::remove(const T &key) {
+    bool set<T, Less>::remove(const T &key) {
 
         SetNode<T>* current = nullptr;
         auto result = search(key);
@@ -771,7 +745,7 @@ namespace ADT {
         SetNode<T>* save = this->endNode;
         this->root->parent = nullptr;
 
-        SetNode<T>* successor =  (++SetIterator<T>(result)).get_ptr();
+        SetNode<T>* successor =  (++set_iterator<T>(result)).get_ptr();
         current = _remove(result.get_ptr(), successor);
 
         if (current != nullptr) {
@@ -789,7 +763,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    SetIterator<T> Set<T, Less>::remove(SetIterator<T> itr) {
+    set_iterator<T> set<T, Less>::remove(set_iterator<T> itr) {
 
         if (itr == end()) {
             return itr;
@@ -798,11 +772,11 @@ namespace ADT {
         SetNode<T>* save = this->endNode;
         this->root->parent = nullptr;
 
-        SetNode<T>* successor =  (++SetIterator<T>(itr)).get_ptr();
+        SetNode<T>* successor =  (++set_iterator<T>(itr)).get_ptr();
         SetNode<T>* current = _remove(itr.get_ptr(), successor);
 
         if (current != nullptr) {
-            SetIterator<T> retrnValue(current == successor ? itr.get_ptr() : successor);
+            set_iterator<T> retrnValue(current == successor ? itr.get_ptr() : successor);
 
             delete current;
             current = nullptr;
@@ -825,7 +799,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    SetIterator<T> Set<T, Less>::search(const T &val) {
+    set_iterator<T> set<T, Less>::search(const T &val) {
 
         if (this->root == nullptr) {
             return this->end();
@@ -839,7 +813,7 @@ namespace ADT {
                 current = current->right;
             }
             else {
-                return SetIterator<T>(current);
+                return set_iterator<T>(current);
             }
         }
 
@@ -847,7 +821,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    void Set<T, Less>::rotate_right(SetNode<T> *node) {
+    void set<T, Less>::rotate_right(SetNode<T> *node) {
 
         if (!node) {
             return;
@@ -879,7 +853,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    void Set<T, Less>::rotate_left(SetNode<T> *node) {
+    void set<T, Less>::rotate_left(SetNode<T> *node) {
 
         if (!node) {
             return;
@@ -911,7 +885,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    size_t Set<T, Less>::size() {
+    size_t set<T, Less>::size() {
         return this->_size;
     }
 

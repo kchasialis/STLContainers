@@ -2,24 +2,24 @@
 #define PQUEUE_H
 
 #include <functional>
-#include "Vector.h"
+#include "vector.h"
 
-namespace ADT {
+namespace adt {
 
     template<typename T, class Compare = std::less<T>>
-    class PQueue {
+    class pqueue {
     private:
-        Vector<T> data;
+        vector<T> data;
         Compare compare;
         void _heapify_up(size_t index);
         void _heapify_down(size_t index);
     public:
-        PQueue() = default;
-        PQueue(const PQueue& other);
-        PQueue(PQueue&& other);
+        pqueue() = default;
+        pqueue(const pqueue& other);
+        pqueue(pqueue&& other);
 
-        PQueue& operator=(const PQueue& other) = default;
-        PQueue& operator=(PQueue&& other) = default;
+        pqueue& operator=(const pqueue& other) = default;
+        pqueue& operator=(pqueue&& other) = default;
 
         bool empty() const;
         size_t size() const;
@@ -30,40 +30,40 @@ namespace ADT {
     };
 
     template<typename T, class Less>
-    PQueue<T, Less>::PQueue(const PQueue &other) : data(other.data) {}
+    pqueue<T, Less>::pqueue(const pqueue &other) : data(other.data) {}
 
     template<typename T, class Less>
-    PQueue<T, Less>::PQueue(PQueue &&other) : data(other.data) {}
+    pqueue<T, Less>::pqueue(pqueue &&other) : data(other.data) {}
 
     template<typename T, class Less>
-    bool PQueue<T, Less>::empty() const {
+    bool pqueue<T, Less>::empty() const {
         return data.empty();
     }
 
     template<typename T, class Less>
-    size_t PQueue<T, Less>::size() const {
+    size_t pqueue<T, Less>::size() const {
         return data.size();
     }
 
     template<typename T, class Less>
-    const T &PQueue<T, Less>::top() const {
+    const T &pqueue<T, Less>::top() const {
         return data.front();
     }
 
     template<typename T, class Less>
-    void PQueue<T, Less>::push(const T &val) {
+    void pqueue<T, Less>::push(const T &val) {
         data.push_back(val);
         _heapify_up(data.size() - 1);
     }
 
     template<typename T, class Less>
-    void PQueue<T, Less>::push(T &&val) {
+    void pqueue<T, Less>::push(T &&val) {
         data.push_back(std::forward<T>(val));
         _heapify_up(data.size() - 1);
     }
 
     template<typename T, class Less>
-    void PQueue<T, Less>::pop() {
+    void pqueue<T, Less>::pop() {
         if (data.size() == 0) {
             throw std::out_of_range("Attempting to pop from empty priority queue");
         }
@@ -74,7 +74,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    void PQueue<T, Less>::_heapify_up(size_t index) {
+    void pqueue<T, Less>::_heapify_up(size_t index) {
         if (index != 0) {
             size_t parent = (index - 1) / 2;
             if (compare(data[parent], data[index])) {
@@ -87,7 +87,7 @@ namespace ADT {
     }
 
     template<typename T, class Less>
-    void PQueue<T, Less>::_heapify_down(size_t index) {
+    void pqueue<T, Less>::_heapify_down(size_t index) {
         size_t left = index * 2 + 1;
         size_t right = index * 2 + 2;
         size_t highest_priority = index;
