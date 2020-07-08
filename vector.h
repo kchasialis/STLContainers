@@ -84,7 +84,6 @@ namespace adt {
 
     template<typename T>
     class vector_r_iterator : public vector_iterator<T> {
-    
     public:
         vector_r_iterator(T** ptr = nullptr) : vector_iterator<T>(ptr) {}
         vector_r_iterator(const vector_iterator<T>& other) {
@@ -293,6 +292,8 @@ namespace adt {
         return vector_r_iterator<T>(&data[_size - 1]);
     }  
 
+    /* TODO: See this again, I dont like it.
+        Maybe change it to nullptr. */
     template<typename T>
     vector_r_iterator<T> vector<T>::rend() {
         return vector_r_iterator<T>(&data[-1]);

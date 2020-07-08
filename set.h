@@ -104,7 +104,7 @@ namespace adt {
             }
             else {
                 current = this->ptr->parent;
-                while (current != nullptr && this->ptr == current->left) {
+                while (current->parent != nullptr && this->ptr == current->left) {
                     this->ptr = current;
                     current = current->parent;
                 }
@@ -132,8 +132,86 @@ namespace adt {
             return this->ptr;
         }
 
-    private:
+    protected:
         SetNode<T>* ptr;
+    };
+
+    template<typename T>
+    class set_r_iterator : public set_iterator<T> {
+    public:
+        using const_data_reference = const T&;
+        using const_data_pointer = const T*;
+        
+        set_r_iterator(SetNode<T>* _ptr = nullptr) : set_iterator<T>(_ptr) {}
+        set_r_iterator(const set_r_iterator<T>& _ptr) = default;
+        set_r_iterator<T>& operator=(const set_r_iterator<T>& _ptr) = default;
+        set_r_iterator<T>& operator=(SetNode<T>* _ptr) {
+            this->ptr = _ptr;
+            return *this;
+        }
+
+        /* Inorder predecessor algorithm. */
+        set_r_iterator<T>& operator++() {
+            if (this->ptr == nullptr) {
+                return *this;
+            }
+
+            SetNode<T>* current;
+            if (this->ptr->left) {
+                current = this->ptr->left;
+                while (current->right != nullptr) {
+                    current = current->right;
+                }
+            }
+            else {
+                current = this->ptr->parent;
+                while (current->parent != nullptr && this->ptr == current->left) {
+                    this->ptr = current;
+                    current = current->parent;
+                }
+            }
+
+            this->ptr = current;
+            return *this;
+        }
+
+        /* Inorder successor algorithm. */
+        set_r_iterator<T>& operator--() {
+            if (this->ptr == nullptr) {
+                return *this;
+            }
+            SetNode<T>* current;
+            if (this->ptr->right) {
+                current = this->ptr->right;
+                while (current->left != nullptr) {
+                    current = current->left;
+                }
+            }
+            else {
+                current = this->ptr->parent;
+                while (current != nullptr && this->ptr == current->right) {
+                    this->ptr = current;
+                    current = current->parent;
+                }
+            }
+
+            this->ptr = current;
+            return *this;
+        }
+
+        set_r_iterator<T> operator++(int) {
+            set_r_iterator<T> tmp(*this);
+            ++(*this);
+
+            return tmp;
+        }
+
+        set_r_iterator<T> operator--(int) {
+            set_r_iterator<T> tmp(*this);
+            --(*this);
+
+            return tmp;    
+        }
     };
 
     template<typename T, class Less = std::less<T>>
@@ -183,6 +261,8 @@ namespace adt {
 
         set_iterator<T> begin();
         set_iterator<T> end();
+        set_r_iterator<T> rbegin();
+        set_r_iterator<T> rend();
         set_iterator<T> search(const T& key);
         set_iterator<T> lower_bound(const T& val);
         set_iterator<T> upper_bound(const T& val);
@@ -652,6 +732,23 @@ namespace adt {
         return set_iterator<T>(this->endNode);
     }
 
+    template<typename T, class Less>
+    set_r_iterator<T> set<T, Less>::rbegin() {
+        SetNode<T> *current = this->root;
+        if (current == nullptr) {
+            return set_r_iterator<T>();
+        }
+        while (current->right != nullptr) {
+            current = current->right;
+        }
+
+        return set_r_iterator<T>(current);
+    }
+
+    template<typename T, class Less>
+    set_r_iterator<T> set<T, Less>::rend() {
+        return set_r_iterator<T>(this->endNode);
+    }
 
     template<typename T, class Less>
     inline bool set<T, Less>::_is_equal_key(const T& nodeval, const T& val) {
