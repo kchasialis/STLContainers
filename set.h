@@ -249,6 +249,7 @@ namespace adt {
 
         set& operator=(set x);
 
+        /* Set modifiers. */
         bool add(const T& data);
         bool add(T&& data);
         bool remove(const T& key);
@@ -256,9 +257,16 @@ namespace adt {
         void clear() noexcept;
         void clear() const noexcept;
 
+        /* Set math operations. */
+        /*TODO : join, intersection, difference */
+        set& join(const set& other);
+        set& intersection(const set& other);
+        set& difference(const set& other);
+
         bool empty();
         size_t size();
 
+        /* Set lookup operations. */
         set_iterator<T> begin();
         set_iterator<T> end();
         set_r_iterator<T> rbegin();

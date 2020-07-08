@@ -1,4 +1,0 @@
--Implement reverse iterators on all classes.
--Provide equal_range for MultiSet on both find and remove.
--Provide Set with common set operations (union, intersection, difference)
--Change everything to lowercase with underscores, I like it more this way
