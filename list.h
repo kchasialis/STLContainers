@@ -188,10 +188,10 @@ namespace adt {
         void push_front(T&& val);
         void pop_back();
         void pop_front();
-        /* These functions remove all the elements that compare equal to val. */
+        /* Remove all the elements that compare equal to val. */
         void remove(const T& val);
         void remove(T&& val);
-        /* This function removes the element pointed to by this iterator. */
+        /* Remove the element pointed to by this iterator. */
         list_iterator<T> remove(list_iterator<T>& ite);
         void clear();
         
@@ -204,11 +204,9 @@ namespace adt {
         list_iterator<T> end();
         list_r_iterator<T> rbegin();
         list_r_iterator<T> rend();
-        list_iterator<T> search(const T& val);
-        list_iterator<T> search(T&& val);
 
         /* Operations. 
-           TODO: add me*/
+           TODO: add me. */
 
         /* Capacity. */
         bool empty() const noexcept;
@@ -449,7 +447,6 @@ namespace adt {
                 node->next->previous = node->previous;
                 node->previous = nullptr;
                 node->next = nullptr;
-                node = nullptr;
                 _size--;
             }
         }
@@ -457,12 +454,40 @@ namespace adt {
 
     template<typename T>
     void list<T>::remove(const T& val) {
-        _remove_node(search(val).get_ptr());
+        Node<T>* current = _head.get();
+        Node<T>* save;
+        Node<T>* end = _sentinel.get();
+
+        while (current != end) {
+            if (current->data == val) {
+                break;   
+            } 
+            current = current->next.get();
+        }
+        while (current && current->data == val) {
+            save = current;
+            current = current->next.get();
+            _remove_node(save);
+        }
     }
 
     template<typename T>
     void list<T>::remove(T&& val) {
-        _remove_node(search(val).get_ptr());
+        Node<T>* current = _head.get();
+        Node<T>* save;
+        Node<T>* end = _sentinel.get();
+
+        while (current != end) {
+            if (current->data == val) {
+                break;   
+            } 
+            current = current->next.get();
+        }
+        while (current->data == val) {
+            save = current;
+            current = current->next.get();
+            _remove_node(save);
+        }
     }
 
     template<typename T>
@@ -540,34 +565,6 @@ namespace adt {
     template<typename T>
     list_r_iterator<T> list<T>::rend() {
         return list_r_iterator<T>(nullptr);
-    }
-
-    template<typename T>
-    list_iterator<T> list<T>::search(const T& val) {
-        Node<T>* current = _head.get();
-        Node<T>* end = _sentinel.get();
-
-        while (current != end) {
-            if (current->data == val) {
-                break;   
-            } 
-            current = current->next.get();
-        }
-        return list_iterator<T>(current);
-    }
-
-    template<typename T>
-    list_iterator<T> list<T>::search(T&& val) {
-        Node<T>* current = _head.get();
-        Node<T>* end = _sentinel.get();
-
-        while (current != end) {
-            if (current->data == val) {
-                break;   
-            } 
-            current = current->next;
-        }
-        return list_iterator<T>(current);
     }
 
     template<typename T>
