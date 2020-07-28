@@ -1,5 +1,4 @@
-#ifndef MULTISET_H
-#define MULTISET_H
+#pragma once
 
 #include <memory>
 
@@ -62,9 +61,17 @@ namespace adt {
             __push_back(tmp);    
         }
     };
+
+    template<typename T>
+    class multiset_iterator;
+
+    template<typename T, class Less = std::less<T>>
+    class multiset;
     
     template<typename T>
-    struct MultiSetNode {
+    class MultiSetNode {
+        friend class multiset<T>;
+    private:
         enum {
             RED,
             BLACK
@@ -87,6 +94,7 @@ namespace adt {
 
     template<typename T>
     class multiset_iterator : public std::iterator<std::bidirectional_iterator_tag, T, std::ptrdiff_t , T*, T&> {
+        friend class multiset<T>;
     public:
         using const_data_reference = const T&;
         using const_data_pointer = const T*;
@@ -203,29 +211,12 @@ namespace adt {
         void swap(multiset_iterator<T>& lhs, multiset_iterator<T>& rhs) {
             std::swap(lhs, rhs);
         }
-
-        MultiSetNode<T>* get_ptr() {
-            return this->ptr;
-        }
-
-        const MultiSetNode<T>* get_ptr() const {
-            return this->ptr;
-        }
-
-        DataNode<T> *get_dataptr() {
-            return this->dataptr;
-        }
-
-        const DataNode<T> *get_dataptr() const {
-            return this->dataptr;
-        }
-
     private:
         MultiSetNode<T>* ptr;
         DataNode<T> *dataptr;
     };
 
-    template<typename T, class Less = std::less<T>>
+    template<typename T, class Less>
     class multiset {
     private:
         enum {
@@ -793,8 +784,8 @@ namespace adt {
         MultiSetNode<T>* save = this->endNode;
         this->root->parent = nullptr;
 
-        MultiSetNode<T>* successor =  (++multiset_iterator<T>(result)).get_ptr();
-        current = _remove(result.get_ptr(), successor);
+        MultiSetNode<T>* successor =  (++multiset_iterator<T>(result)).ptr;
+        current = _remove(result.ptr, successor);
 
         if (current != nullptr) {
             delete current;
@@ -816,18 +807,18 @@ namespace adt {
             return itr;
         }
 
-        if (itr.get_dataptr()->next != nullptr) {
+        if (itr.dataptr->next != nullptr) {
             return ++itr;
         }
 
         MultiSetNode<T>* save = this->endNode;
         this->root->parent = nullptr;
 
-        MultiSetNode<T>* successor =  (++multiset_iterator<T>(itr)).get_ptr();
-        MultiSetNode<T>* current = _remove(itr.get_ptr(), successor);
+        MultiSetNode<T>* successor =  (++multiset_iterator<T>(itr)).ptr;
+        MultiSetNode<T>* current = _remove(itr.ptr, successor);
 
         if (current != nullptr) {
-            multiset_iterator<T> retrnValue(current == successor ? itr.get_ptr() : successor);
+            multiset_iterator<T> retrnValue(current == successor ? itr.ptr : successor);
             delete current;
             current = nullptr;
 
@@ -997,5 +988,3 @@ namespace adt {
         data_list._push_back(val);
     }
 }
-
-#endif

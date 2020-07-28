@@ -1,8 +1,5 @@
-#ifndef MULTIMAP_H
-#define MULTIMAP_H
+#pragma once
 
 namespace adt {
     /*TODO: implement me. */
 }
-
-#endif

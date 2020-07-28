@@ -1,5 +1,4 @@
-#ifndef MAP_H
-#define MAP_H
+#pragma once
 
 #include <functional>
 #include <utility>
@@ -10,233 +9,275 @@
 
 namespace adt {
 
-    template<typename Key, typename T>
-    struct MapNode {
-        enum {
-            RED,
-            BLACK
-        };
+    #define map_node typename map<K, V, Less>::MapNode*
 
-        typedef std::pair<const Key, T> value_type;
-
-        value_type data;
-        MapNode *left;
-        MapNode *right;
-        MapNode *parent;
-        int8_t color;
-
-        MapNode() : data(), left(nullptr), right(nullptr), parent(nullptr), color(RED) {}
-        MapNode(const Key& key, const T& value) : data(std::make_pair(key, value)), left(nullptr), right(nullptr), parent(nullptr), color(RED) {}
-        MapNode(const Key& key, T&& value) : data(std::make_pair(key, std::forward<T>(value))), left(nullptr), right(nullptr), parent(nullptr), color(RED) {}
-        MapNode(Key&& key, T&& value) : data(std::make_pair(std::forward<const Key>(key), std::forward<T>(value))), left(nullptr), right(nullptr), parent(nullptr), color(RED) {}
-        MapNode(Key&& key, const T& value) : data(std::make_pair(std::forward<const Key>(key), value)), left(nullptr), right(nullptr), parent(nullptr), color(RED) {}
-        explicit MapNode(const value_type& value) : data(value), left(nullptr), right(nullptr), parent(nullptr), color(RED) {}
-        explicit MapNode(const MapNode& node) = default;
-        explicit MapNode(MapNode&& node) = default;
-
-        MapNode& operator=(MapNode&& node) = default;
-    };
-
-    template<typename Key, typename T>
-    class map_iterator : public std::iterator<std::bidirectional_iterator_tag, T, std::ptrdiff_t, T*, T&> {
-    public:
-
-        typedef std::pair<const Key, T> value_type;
-
-        map_iterator(MapNode<Key, T>* rhs = nullptr) : ptr(rhs) {}
-        map_iterator(const map_iterator<Key, T>& rhs) : ptr(rhs.ptr) {}
-        map_iterator<Key, T>& operator=(const map_iterator<Key, T>& rhs) {
-            this->ptr = rhs.ptr;
-            return *this;
-        }
-        map_iterator<Key, T>& operator=(MapNode<Key, T>* rhs) {
-            this->ptr = rhs;
-            return *this;
-        }
-        bool operator==(const map_iterator<Key, T>& rhs) const {
-            return this->ptr == rhs.ptr;
-        }
-        bool operator!=(const map_iterator<Key, T>& rhs) const {
-            return !(*this == rhs);
-        }
-        value_type& operator*() {
-            return this->ptr->data;
-        }
-        const value_type& operator*() const {
-            return this->ptr->data;
-        }
-        value_type* operator->() {
-            return &(this->ptr->data);
-        }
-        /*Inorder successor algorithm*/
-        map_iterator<Key, T> operator++() {
-            if (this->ptr == nullptr) {
-                return map_iterator<Key, T>();
-            }
-            MapNode<Key, T>* current;
-            if (this->ptr->right) {
-                current = this->ptr->right;
-                while (current->left != nullptr) {
-                    current = current->left;
-                }
-            }
-            else {
-                current = this->ptr->parent;
-                while (current != nullptr && this->ptr == current->right) {
-                    this->ptr = current;
-                    current = current->parent;
-                }
-            }
-
-            this->ptr = current;
-            return *this;
-        }
-        map_iterator<Key, T> operator++(int) {
-            if (this->ptr == nullptr) {
-                return map_iterator<Key, T>();
-            }
-
-            map_iterator<Key, T> tmp(*this);
-            MapNode<Key, T>* current;
-            if (this->ptr->right) {
-                current = this->ptr->right;
-                while (current->left != nullptr) {
-                    current = current->left;
-                }
-            }
-            else {
-                current = this->ptr->parent;
-                while (current != nullptr && this->ptr == current->right) {
-                    this->ptr = current;
-                    current = current->parent;
-                }
-            }
-
-            this->ptr = current;
-            return tmp;
-        }
-        /*Inorder predecessor algorithm*/
-        map_iterator<Key, T> operator--() {
-            if (this->ptr == nullptr) {
-                return map_iterator<Key, T>();
-            }
-
-            MapNode<Key, T>* current;
-            if (this->ptr->left) {
-                current = this->ptr->left;
-                while (current->right != nullptr) {
-                    current = current->right;
-                }
-            }
-            else {
-                current = this->ptr->parent;
-                while (current != nullptr && this->ptr == current->left) {
-                    this->ptr = current;
-                    current = current->parent;
-                }
-            }
-
-            this->ptr = current;
-            return *this;
-        }
-        map_iterator<Key, T> operator--(int) {
-            if (this->ptr == nullptr) {
-                return map_iterator<Key, T>();
-            }
-
-            map_iterator<Key, T> tmp(*this);
-
-            MapNode<Key, T>* current;
-            if (this->ptr->left) {
-                current = this->ptr->left;
-                while (current->right != nullptr) {
-                    current = current->right;
-                }
-            }
-            else {
-                current = this->ptr->parent;
-                while (current != nullptr && this->ptr == current->left) {
-                    this->ptr = current;
-                    current = current->parent;
-                }
-            }
-
-            this->ptr = current;
-            return tmp;
-        }
-        void swap(map_iterator<Key, T>& lhs, map_iterator<Key, T>& rhs) {
-            std::swap(lhs, rhs);
-        }
-
-        MapNode<Key, T>* get_ptr() {
-            return this->ptr;
-        }
-
-        const MapNode<Key, T>* get_ptr() const {
-            return this->ptr;
-        }
-
-    private:
-        MapNode<Key, T>* ptr;
-    };
-
-    template<typename Key, typename T, class Less = std::less<Key>>
+    template<typename K, typename V, class Less = std::less<K>>
     class map {
     private:
         enum {
             RED,
             BLACK
         };
-        enum SetBalanceType {
+        enum MapBalanceType {
             DELETION,
             INSERTION
         };
 
-        MapNode<Key, T> *root;
-        MapNode<Key, T> *endNode;
+        class MapNode {
+        private:
+            friend class map<K, V, Less>;
+            friend class map_iterator;
+
+            enum {
+                RED,
+                BLACK
+            };
+
+            typedef std::pair<const K, V> value_type;
+
+            value_type data;
+            MapNode* left;
+            MapNode* right;
+            MapNode* parent;
+            int8_t color;
+
+            MapNode() : data(), left(nullptr), right(nullptr), parent(nullptr), color(RED) {}
+            MapNode(const K& key, const V& value) : data(std::make_pair(key, value)), left(nullptr), right(nullptr), parent(nullptr), color(RED) {}
+            MapNode(const K& key, V&& value) : data(std::make_pair(key, std::forward<V>(value))), left(nullptr), right(nullptr), parent(nullptr), color(RED) {}
+            MapNode(K&& key, V&& value) : data(std::make_pair(std::forward<const K>(key), std::forward<V>(value))), left(nullptr), right(nullptr), parent(nullptr), color(RED) {}
+            MapNode(K&& key, const V& value) : data(std::make_pair(std::forward<const K>(key), value)), left(nullptr), right(nullptr), parent(nullptr), color(RED) {}
+            explicit MapNode(const value_type& value) : data(value), left(nullptr), right(nullptr), parent(nullptr), color(RED) {}
+            explicit MapNode(const MapNode& node) = default;
+            explicit MapNode(MapNode&& node) = default;
+
+            MapNode& operator=(MapNode&& node) = default;
+        };
+
+        MapNode* root;
+        MapNode* endNode;
         Less less;
         size_t _size;
-        void rotate_left(MapNode<Key, T> *);
-        void rotate_right(MapNode<Key, T> *);
-        MapNode<Key, T>* bst_insert(bool& added_new, const Key& key, const T& value);
-        MapNode<Key, T>* bst_insert(bool& added_new, const Key& key, T&& value);
-        MapNode<Key, T>* bst_insert(bool& added_new, Key&& key, T&& value);
-        MapNode<Key, T>* bst_insert(bool& added_new, Key&& key, const T& value);
-        MapNode<Key, T>* _copy_tree(MapNode<Key, T>*);
-        MapNode<Key, T>* _remove(MapNode<Key, T> *, MapNode<Key, T>*);
-        MapNode<Key, T>* _find_bound(MapNode<Key, T>*, const Key&);
-        inline bool _is_equal_key(const Key&, const Key&);
-        void restore_balance(MapNode<Key, T>*, int8_t type);
-        void tree_destroy(MapNode<Key, T> *);
+        void rotate_left(MapNode *);
+        void rotate_right(MapNode *);
+        MapNode* _map_parent_of(MapNode* node);
+        MapNode* _map_grandparent_of(MapNode* node);
+        MapNode* map_left_of(MapNode* node);
+        MapNode* map_right_of(MapNode* node);
+        void _map_assign_color(MapNode* node, char color);
+        char _map_color_of(MapNode* node);
+        MapNode* bst_insert(bool& added_new, const K& key, const V& value);
+        MapNode* bst_insert(bool& added_new, const K& key, V&& value);
+        MapNode* bst_insert(bool& added_new, K&& key, V&& value);
+        MapNode* bst_insert(bool& added_new, K&& key, const V& value);
+        MapNode* _copy_tree(MapNode *);
+        MapNode* _remove(MapNode *, MapNode*);
+        MapNode* _find_bound(MapNode *, const K&);
+        inline bool _is_equal_key(const K&, const K&);
+        void restore_balance(MapNode *, int8_t type);
+        void tree_destroy(MapNode *);
     public:
-        map() noexcept;
-        map(const map& rhs) noexcept;
-        map(map&& rhs) noexcept;
+        class map_iterator : public std::iterator<std::bidirectional_iterator_tag, V, std::ptrdiff_t, V*, V&> {
+        protected:
+            MapNode* ptr;
+            friend class map<K, V, Less>;
+        public:
+            using value_type = std::pair<const K, V>;
+
+            map_iterator(MapNode* rhs = nullptr) : ptr(rhs) {}
+            map_iterator(const map_iterator& rhs) : ptr(rhs.ptr) {}
+            
+            map_iterator& operator=(const map_iterator& rhs) {
+                this->ptr = rhs.ptr;
+                return *this;
+            }
+            map_iterator& operator=(MapNode* rhs) {
+                this->ptr = rhs;
+                return *this;
+            }
+
+            bool operator==(const map_iterator& rhs) const {
+                return this->ptr == rhs.ptr;
+            }
+            bool operator!=(const map_iterator& rhs) const {
+                return !(*this == rhs);
+            }
+
+            value_type& operator*() {
+                return this->ptr->data;
+            }
+            const value_type& operator*() const {
+                return this->ptr->data;
+            }
+            value_type* operator->() {
+                return &(this->ptr->data);
+            }
+
+            /*Inorder successor algorithm*/
+            map_iterator& operator++ () {
+              if (this->ptr == nullptr) {
+                 return *this;
+              }
+
+              MapNode* current;
+              if (this->ptr->right) {
+                current = this->ptr->right;
+                while (current->left != nullptr) {
+                  current = current->left;
+                }
+              }
+              else {
+                current = this->ptr->parent;
+                while (current != nullptr && this->ptr == current->right) {
+                  this->ptr = current;
+                  current = current->parent;
+                }
+              }
+              this->ptr = current;
+              return *this;
+            }
+
+            map_iterator operator++(int) {
+              map_iterator tmp (*this);
+              ++(*this);
+
+              return tmp;
+            }
+
+            /*Inorder predecessor algorithm*/
+            map_iterator& operator-- () {
+              
+              if (this->ptr == nullptr) {
+                return map_iterator();
+              }
+
+              MapNode* current;
+              if (this->ptr->left) {
+                current = this->ptr->left;
+                while (current->right != nullptr) {
+                  current = current->right;
+                }
+              }
+              else {
+                current = this->ptr->parent;
+                while (current != nullptr && this->ptr == current->left) {
+                  this->ptr = current;
+                  current = current->parent;
+                }
+              }
+              this->ptr = current;
+              return *this;
+            }
+
+            void swap(map_iterator& lhs, map_iterator& rhs) {
+                std::swap(lhs, rhs);
+            }
+        };
+
+        class map_r_iterator : public map_iterator {
+        public:
+            map_r_iterator (MapNode* _ptr = nullptr) : map_iterator (_ptr) {}
+            map_r_iterator (const map_r_iterator& other) = default;
+            
+            map_r_iterator& operator= (const map_r_iterator& other) = default;
+            map_r_iterator& operator= (MapNode* _ptr) {
+                this->ptr = _ptr;
+                return *this;
+            }
+
+            /* Inorder predecessor algorithm.  */
+            map_r_iterator& operator++ () {
+                if (this->ptr == nullptr) {
+                    return *this;
+                }
+
+                MapNode* current;
+                if (this->ptr->left) {
+                    current = this->ptr->left;
+                    while (current->right != nullptr) {
+                        current = current->right;
+                    }
+                }
+                else {
+                    current = this->ptr->parent;
+                    while (current != nullptr && this->ptr == current->left) {
+                        this->ptr = current;
+                        current = current->parent;
+                    }
+                }
+                this->ptr = current;
+                return *this;
+            }
+
+            map_r_iterator operator++ (int) {
+                map_r_iterator tmp(*this);
+                ++(*this);
+
+                return tmp;
+            }
+
+            /* Inorder successor algorithm.  */
+            map_r_iterator& operator-- () {
+                
+                if (this->ptr == nullptr) {
+                    return *this;
+                }
+                MapNode* current;
+                if (this->ptr->right) {
+                    current = this->ptr->right;
+                    while (current->left != nullptr) {
+                        current = current->left;
+                    }
+                }
+                else {
+                    current = this->ptr->parent;
+                    while (current != nullptr && this->ptr == current->right) {
+                        this->ptr = current;
+                        current = current->parent;
+                    }
+                }
+                this->ptr = current;
+                return *this;
+            }
+
+            map_r_iterator operator-- (int) {
+                map_r_iterator tmp (*this);
+                --(*this);
+
+                return tmp;
+            }
+        };
+
+        map () noexcept;
+        map (const map& rhs) noexcept;
+        map (map&& rhs) noexcept;
         ~map();
 
-        map& operator=(map x);
-        bool add(const Key& key, const T& value);
-        bool add(const Key& key, T&& value);
-        bool add(Key&& key, T&& value);
-        bool add(Key&& key, const T& value);
-        bool remove(const Key& key);
-        map_iterator<Key, T> remove(map_iterator<Key, T> itr);
-        void clear() noexcept;
-        void clear() const noexcept;
+        map& operator= (map x);
+        
+        bool add (const K& key, const V& value);
+        bool add (const K& key, V&& value);
+        bool add (K&& key, V&& value);
+        bool add (K&& key, const V& value);
+        bool remove (const K& key);
+        map_iterator remove (map_iterator itr);
+        void clear () noexcept;
+        void clear () const noexcept;
 
-        bool empty();
-        size_t size();
+        bool empty ();
+        size_t size ();
 
-        map_iterator<Key, T> lower_bound(const Key& key);
-        map_iterator<Key, T> upper_bound(const Key& key);
-        map_iterator<Key, T> begin();
-        map_iterator<Key, T> end();
-        map_iterator<Key, T> search(const Key& key);
-        T& operator[](const Key& key);
-        const T& at(const Key& key) const;
-        T& at(const Key& key);
+        map_iterator lower_bound (const K& key);
+        map_iterator upper_bound (const K& key);
+        map_iterator begin ();
+        map_iterator end ();
+        map_r_iterator rbegin ();
+        map_r_iterator rend ();
+        map_iterator search (const K& key);
+        V& operator[] (const K& key);
+        const V& at (const K& key) const;
+        V& at (const K& key);
 
-        friend void swap(Map& lhs, Map& rhs) {
+        friend void swap (map& lhs, map& rhs) {
             using std::swap;
 
             swap(lhs.root, rhs.root);
@@ -247,54 +288,14 @@ namespace adt {
     };
 
     #define map_parent_of(node) _map_parent_of(node)
-
-        template<typename Key, typename T>
-        static inline MapNode<Key, T>* _map_parent_of(MapNode<Key, T>* node) {
-            return node ? node->parent : nullptr;
-        }
-
     #define map_grandparent_of(node) _map_grandparent_of(node)
-
-        template<typename Key, typename T>
-        static inline MapNode<Key, T>* _map_grandparent_of(MapNode<Key, T>* node) {
-            if (node) {
-                if (node->parent) {
-                    return node->parent->parent;
-                }
-            }
-            return nullptr;
-        }
-
-        template<typename Key, typename T>
-        static inline MapNode<Key, T>* map_left_of(MapNode<Key, T>* node) {
-            return node ? node->left : nullptr;
-        }
-
-        template<typename Key, typename T>
-        static inline MapNode<Key, T>* map_right_of(MapNode<Key, T> *node) {
-            return node ? node->right : nullptr;
-        }
-
     #define map_assign_color(node, color) _map_assign_color(node, color)
-
-        template<typename Key, typename T>
-        static inline void _map_assign_color(MapNode<Key, T> *node, char color) {
-            if (node) {
-                node->color = color;
-            }
-        }
-
     #define map_color_of(node) _map_color_of(node)
-
-        template<typename Key, typename T>
-        static inline char _map_color_of(MapNode<Key, T> *node) {
-            return node ? node->color : (int8_t) MapNode<Key, T>::BLACK;
-        }
 
     #define map_balance_insertion(side, rotate_1, rotate_2)                 \
         do  {                                                               \
                 {                                                           \
-                    MapNode<Key, T> *uncle = side(map_grandparent_of(node));\
+                    map_node uncle = side(map_grandparent_of(node));  \
                                                                             \
                     if (map_color_of(uncle) == RED) {                       \
                         /*Uncle RED means color-flip*/                      \
@@ -319,7 +320,7 @@ namespace adt {
     #define map_balance_deletion(side1, side2, rotate_side1, rotate_side2)  \
         do {                                                                \
                 {                                                           \
-                    MapNode<Key, T>* sibling = side1(map_parent_of(node));  \
+                    MapNode* sibling = side1(map_parent_of(node));    \
                     if (map_color_of(sibling) == RED) {                     \
                         map_assign_color(sibling, BLACK);                   \
                         map_assign_color(map_parent_of(node), RED);         \
@@ -346,16 +347,16 @@ namespace adt {
                 }                                                           \
         } while(0)
 
-    template<typename Key, typename T, class Less>
-    map<Key, T, Less>::map() noexcept : root(nullptr), endNode(nullptr) , _size(0) {}
+    template<typename K, typename V, class Less>
+    map<K, V, Less>::map() noexcept : root(nullptr), endNode(nullptr) , _size(0) {}
 
-    template<typename Key, typename T, class Less>
-    MapNode<Key, T>* map<Key, T, Less>::_copy_tree(MapNode<Key, T>* other_root) {
+    template<typename K, typename V, class Less>
+    map_node map<K, V, Less>::_copy_tree(MapNode* other_root) {
         if (other_root == nullptr) {
             return nullptr;
         }
 
-        MapNode<Key, T>* new_node = new MapNode<Key, T>(other_root->get_value());
+        MapNode* new_node = new MapNode(other_root->get_value());
 
         new_node->left = _copy_tree(other_root->left);
         if (new_node->left) {
@@ -370,30 +371,30 @@ namespace adt {
         return new_node;
     }
 
-    template<typename Key, typename T, class Less>
-    map<Key, T, Less>::map(const map& other) noexcept {
-        /*Create an exact copy of this map, O(n)*/
+    template<typename K, typename V, class Less>
+    map<K, V, Less>::map(const map& other) noexcept {
+        /* Create an exact copy of this map, O(n). */
         this->root = _copy_tree(other.root);
-        this->endNode = new MapNode<Key, T>();
+        this->endNode = new MapNode();
         this->endNode->left = this->root;
         this->root->parent = this->endNode;
     }
 
-    template<typename Key, typename T, class Less>
-    map<Key, T, Less>::map(map&& other) noexcept : map() {
+    template<typename K, typename V, class Less>
+    map<K, V, Less>::map(map&& other) noexcept : map() {
         swap(*this, other);
     }
 
-    template<typename Key, typename T, class Less>
-    map<Key, T, Less>& map<Key, T, Less>::operator=(map other) {
-        /*Copy and swap idiom, let the compiler handle the copy of the argument*/
+    template<typename K, typename V, class Less>
+    map<K, V, Less>& map<K, V, Less>::operator=(map other) {
+        /* Copy and swap idiom, let the compiler handle the copy of the argument. */
         swap(*this, other);
 
         return *this;
     }
 
-    template<typename Key, typename T, class Less>
-    void map<Key, T, Less>::tree_destroy(MapNode<Key, T> *current) {
+    template<typename K, typename V, class Less>
+    void map<K, V, Less>::tree_destroy(map_node current) {
 
         if (!current) {
             return;
@@ -405,27 +406,27 @@ namespace adt {
         delete current;
     }
 
-    template<typename Key, typename T, class Less>
-    map<Key, T, Less>::~map() {
+    template<typename K, typename V, class Less>
+    map<K, V, Less>::~map() {
         if (this->root) {
             tree_destroy(this->root);
             delete this->endNode;
         }
     }
 
-    template<typename Key, typename T, class Less>
-    MapNode<Key, T> *map<Key, T, Less>::bst_insert(bool &added_new, const Key& key, const T& value) {
+    template<typename K, typename V, class Less>
+    map_node map<K, V, Less>::bst_insert(bool &added_new, const K& key, const V& value) {
 
         if (empty()) {
             added_new = true;
-            this->root = new MapNode<Key, T>(key, value);
-            this->endNode = new MapNode<Key, T>();
+            this->root = new MapNode(key, value);
+            this->endNode = new MapNode();
             this->endNode->left = this->root;
             this->root->parent = this->endNode;
             return this->root;
         }
 
-        MapNode<Key, T> *current = this->root;
+        map_node current = this->root;
         while (1) {
 
             if (less(key, current->data.first)) {
@@ -434,7 +435,7 @@ namespace adt {
                 }
                 else {
                     added_new = true;
-                    MapNode<Key, T> *new_node = new MapNode<Key, T>(key, value);
+                    map_node new_node = new MapNode(key, value);
                     current->left = new_node;
                     new_node->parent = current;
 
@@ -447,7 +448,7 @@ namespace adt {
                 }
                 else {
                     added_new = true;
-                    MapNode<Key, T> *new_node = new MapNode<Key, T>(key, value);
+                    map_node new_node = new MapNode(key, value);
                     current->right = new_node;
                     new_node->parent = current;
 
@@ -461,19 +462,19 @@ namespace adt {
         }
     }
 
-    template<typename Key, typename T, class Less>
-    MapNode<Key, T> *map<Key, T, Less>::bst_insert(bool &added_new, const Key &key, T &&value) {
+    template<typename K, typename V, class Less>
+    map_node map<K, V, Less>::bst_insert(bool &added_new, const K& key, V&& value) {
 
         if (empty()) {
             added_new = true;
-            this->root = new MapNode<Key, T>(key, std::forward<T>(value));
-            this->endNode = new MapNode<Key, T>();
+            this->root = new MapNode(key, std::forward<V>(value));
+            this->endNode = new MapNode();
             this->endNode->left = this->root;
             this->root->parent = this->endNode;
             return this->root;
         }
 
-        MapNode<Key, T> *current = this->root;
+        map_node current = this->root;
         while (1) {
 
             if (less(key, current->data.first)) {
@@ -482,7 +483,7 @@ namespace adt {
                 }
                 else {
                     added_new = true;
-                    MapNode<Key, T> *new_node = new MapNode<Key, T>(key, std::forward<T>(value));
+                    map_node new_node = new MapNode(key, std::forward<V>(value));
                     current->left = new_node;
                     new_node->parent = current;
 
@@ -495,7 +496,7 @@ namespace adt {
                 }
                 else {
                     added_new = true;
-                    MapNode<Key, T> *new_node = new MapNode<Key, T>(key, std::forward<T>(value));
+                    map_node new_node = new MapNode(key, std::forward<V>(value));
                     current->right = new_node;
                     new_node->parent = current;
 
@@ -509,18 +510,18 @@ namespace adt {
         }
     }
 
-    template<typename Key, typename T, class Less>
-    MapNode<Key, T> *map<Key, T, Less>::bst_insert(bool &added_new, Key &&key, const T &value) {
+    template<typename K, typename V, class Less>
+    map_node map<K, V, Less>::bst_insert(bool &added_new, K&& key, const V& value) {
         if (empty()) {
             added_new = true;
-            this->root = new MapNode<Key, T>(std::forward<Key>(key), value);
-            this->endNode = new MapNode<Key, T>();
+            this->root = new MapNode(std::forward<K>(key), value);
+            this->endNode = new MapNode();
             this->endNode->left = this->root;
             this->root->parent = this->endNode;
             return this->root;
         }
 
-        MapNode<Key, T> *current = this->root;
+        map_node current = this->root;
         while (1) {
 
             if (less(key, current->data.first)) {
@@ -529,7 +530,7 @@ namespace adt {
                 }
                 else {
                     added_new = true;
-                    MapNode<Key, T> *new_node = new MapNode<Key, T>(std::forward<Key>(key), value);
+                    map_node new_node = new MapNode(std::forward<K>(key), value);
                     current->left = new_node;
                     new_node->parent = current;
 
@@ -542,7 +543,7 @@ namespace adt {
                 }
                 else {
                     added_new = true;
-                    MapNode<Key, T> *new_node = new MapNode<Key, T>(std::forward<Key>(key), value);
+                    map_node new_node = new MapNode(std::forward<K>(key), value);
                     current->right = new_node;
                     new_node->parent = current;
 
@@ -557,19 +558,19 @@ namespace adt {
     }
 
 
-    template<typename Key, typename T, class Less>
-    MapNode<Key, T> *map<Key, T, Less>::bst_insert(bool &added_new, Key&& key, T&& value) {
+    template<typename K, typename V, class Less>
+    map_node map<K, V, Less>::bst_insert(bool &added_new, K&& key, V&& value) {
 
         if (empty()) {
             added_new = true;
-            this->root = new MapNode<Key, T>(std::forward<Key>(key), std::forward<T>(value));
-            this->endNode = new MapNode<Key, T>();
+            this->root = new MapNode(std::forward<K>(key), std::forward<V>(value));
+            this->endNode = new MapNode();
             this->endNode->left = this->root;
             this->root->parent = this->endNode;
             return this->root;
         }
 
-        MapNode<Key, T> *current = this->root;
+        map_node current = this->root;
         while (1) {
 
             if (less(key, current->data.first)) {
@@ -578,7 +579,7 @@ namespace adt {
                 }
                 else {
                     added_new = true;
-                    MapNode<Key, T> *new_node = new MapNode<Key, T>(std::forward<Key>(key), std::forward<T>(value));
+                    map_node new_node = new MapNode(std::forward<K>(key), std::forward<V>(value));
                     current->left = new_node;
                     new_node->parent = current;
 
@@ -591,7 +592,7 @@ namespace adt {
                 }
                 else {
                     added_new = true;
-                    MapNode<Key, T> *new_node = new MapNode<Key, T>(std::forward<Key>(key), std::forward<T>(value));
+                    map_node new_node = new MapNode(std::forward<K>(key), std::forward<V>(value));
                     current->right = new_node;
                     new_node->parent = current;
 
@@ -605,11 +606,11 @@ namespace adt {
         }
     }
 
-    template<typename Key, typename T, class Less>
-    bool map<Key, T, Less>::add(const Key& key, const T& value) {
+    template<typename K, typename V, class Less>
+    bool map<K, V, Less>::add(const K& key, const V& value) {
 
         bool added_new;
-        MapNode<Key, T> *current = bst_insert(added_new, key, value);
+        map_node current = bst_insert(added_new, key, value);
 
         if (!added_new) {
             return false;
@@ -625,11 +626,11 @@ namespace adt {
         return true;
     }
 
-    template<typename Key, typename T, class Less>
-    bool map<Key, T, Less>::add(const Key& key, T&& value) {
+    template<typename K, typename V, class Less>
+    bool map<K, V, Less>::add(const K& key, V&& value) {
 
         bool added_new;
-        MapNode<Key, T> *current = bst_insert(added_new, key, value);
+        map_node current = bst_insert(added_new, key, value);
 
         if (!added_new) {
             return false;
@@ -645,11 +646,11 @@ namespace adt {
         return true;
     }
 
-    template<typename Key, typename T, class Less>
-    bool map<Key, T, Less>::add(Key&& key, const T& value) {
+    template<typename K, typename V, class Less>
+    bool map<K, V, Less>::add(K&& key, const V& value) {
 
         bool added_new;
-        MapNode<Key, T> *current = bst_insert(added_new, key, value);
+        map_node current = bst_insert(added_new, key, value);
 
         if (!added_new) {
             return false;
@@ -665,11 +666,11 @@ namespace adt {
         return true;
     }
 
-    template<typename Key, typename T, class Less>
-    bool map<Key, T, Less>::add(Key&& key, T&& value) {
+    template<typename K, typename V, class Less>
+    bool map<K, V, Less>::add(K&& key, V&& value) {
 
         bool added_new;
-        MapNode<Key, T> *current = bst_insert(added_new, std::forward<Key>(key), std::forward<T>(value));
+        map_node current = bst_insert(added_new, std::forward<K>(key), std::forward<V>(value));
 
         if (!added_new) {
             return false;
@@ -685,19 +686,8 @@ namespace adt {
         return true;
     }
 
-    template<typename Key, typename T, class Less>
-    void map<Key, T, Less>::clear() noexcept {
-        if (this->root) {
-            tree_destroy(this->root);
-            delete this->endNode;
-            this->root = nullptr;
-            this->endNode = nullptr;
-            this->_size = 0;
-        }
-    }
-
-    template<typename Key, typename T, class Less>
-    void map<Key, T, Less>::clear() const noexcept {
+    template<typename K, typename V, class Less>
+    void map<K, V, Less>::clear() noexcept {
         if (this->root) {
             tree_destroy(this->root);
             delete this->endNode;
@@ -707,13 +697,24 @@ namespace adt {
         }
     }
 
-    template<typename Key, typename T, class Less>
-    bool map<Key, T, Less>::empty() {
+    template<typename K, typename V, class Less>
+    void map<K, V, Less>::clear() const noexcept {
+        if (this->root) {
+            tree_destroy(this->root);
+            delete this->endNode;
+            this->root = nullptr;
+            this->endNode = nullptr;
+            this->_size = 0;
+        }
+    }
+
+    template<typename K, typename V, class Less>
+    bool map<K, V, Less>::empty() {
         return this->root == nullptr;
     }
 
-    template<typename Key, typename T, class Less>
-    void map<Key, T, Less>::restore_balance(MapNode<Key, T>* node, int8_t type) {
+    template<typename K, typename V, class Less>
+    void map<K, V, Less>::restore_balance(MapNode* node, int8_t type) {
 
         if (type == DELETION) {
             while (node != this->root && map_color_of(node) == BLACK) {
@@ -751,24 +752,24 @@ namespace adt {
         }
     }
 
-    template<typename Key, typename T, class Less>
-    MapNode<Key, T>* map<Key, T, Less>::_remove(MapNode<Key, T>* current, MapNode<Key, T>* successor) {
+    template<typename K, typename V, class Less>
+    map_node map<K, V, Less>::_remove(map_node current, map_node successor) {
 
         /*If this node is not a leaf and has both children*/
         if (current->left != nullptr && current->right != nullptr) {
             /*Get the minimum value of the right subtree*/
             using std::swap;
-            swap((Key&) current->data.first, (Key&) successor->data.first);
+            swap((K&) current->data.first, (K&) successor->data.first);
             swap(current->data.second, successor->data.second);
             current = successor;
         }
 
-        MapNode<Key, T>* r_node = current->left != nullptr ? current->left : current->right;
+        map_node r_node = current->left != nullptr ? current->left : current->right;
 
         /*If node has one children*/
         if (r_node != nullptr) {
             r_node->parent = current->parent;
-            MapNode<Key, T>* parent_node = current->parent;
+            map_node parent_node = current->parent;
             if (parent_node == nullptr) {
                 this->root = r_node;
             }
@@ -783,9 +784,9 @@ namespace adt {
             current->left = nullptr;
             current->parent = nullptr;
 
-            if (map_color_of(current) == BLACK) {
+            if (map_color_of (current) == BLACK) {
                 /*Balance only if its a black node*/
-                restore_balance(r_node, DELETION);
+                restore_balance (r_node, DELETION);
             }
         }
         else if (current->parent == nullptr) {
@@ -798,12 +799,12 @@ namespace adt {
         }
         else {
             /*Its a leaf*/
-            if (map_color_of(current) == BLACK) {
+            if (map_color_of (current) == BLACK) {
                 /*Balance only if its a black node*/
-                restore_balance(current, DELETION);
+                restore_balance (current, DELETION);
             }
 
-            MapNode<Key, T>* parent_node = current->parent;
+            MapNode* parent_node = current->parent;
             if (parent_node != nullptr) {
                 if (current == parent_node->left) {
                     parent_node->left = nullptr;
@@ -818,26 +819,41 @@ namespace adt {
         return current;
     }
 
-    template<typename Key, typename T, class Less>
-    map_iterator<Key, T> map<Key, T, Less>::begin() {
-        MapNode<Key, T> *current = this->root;
+    template<typename K, typename V, class Less>
+    typename map<K, V, Less>::map_iterator map<K, V, Less>::begin() {
+        MapNode* current = this->root;
         if (current == nullptr) {
-            return map_iterator<Key, T>();
+            return map_iterator();
         }
         while (current->left != nullptr) {
             current = current->left;
         }
 
-        return map_iterator<Key, T>(current);
+        return map_iterator(current);
     }
 
-    template<typename Key, typename T, class Less>
-    map_iterator<Key, T> map<Key, T, Less>::end() {
-        return map_iterator<Key, T>(this->endNode);
+    template<typename K, typename V, class Less>
+    typename map<K, V, Less>::map_iterator map<K, V, Less>::end() {
+        return map_iterator(this->endNode);
     }
 
-    template<typename Key, typename T, class Less>
-    inline bool map<Key, T, Less>::_is_equal_key(const Key& lhs, const Key& rhs) {
+    template<typename K, typename V, class Less>
+    typename map<K, V, Less>::map_r_iterator map<K, V, Less>::rbegin() {
+        MapNode *current = this->root;
+        while (current && current->right) {
+            current = current->right;
+        }
+
+        return map_r_iterator(current);
+    }
+
+    template<typename K, typename V, class Less>
+    typename map<K, V, Less>::map_r_iterator map<K, V, Less>::rend() {
+        return map_r_iterator(this->endNode);
+    }
+
+    template<typename K, typename V, class Less>
+    inline bool map<K, V, Less>::_is_equal_key(const K& lhs, const K& rhs) {
         if (less(lhs, rhs)) {
             return false;
         }
@@ -847,8 +863,8 @@ namespace adt {
         return true;
     }
 
-    template<typename Key, typename T, class Less>
-    MapNode<Key, T>* map<Key, T, Less>::_find_bound(MapNode<Key, T> *_root, const Key &key) {
+    template<typename K, typename V, class Less>
+    map_node map<K, V, Less>::_find_bound(map_node _root, const K &key) {
         if (_root == nullptr) {
             return nullptr;
         }
@@ -861,48 +877,48 @@ namespace adt {
             return _find_bound(_root->right, key);
         }
 
-        MapNode<Key, T>* retnode = _find_bound(_root->left, key);
+        map_node retnode = _find_bound(_root->left, key);
         return retnode == nullptr ? _root : retnode;
     }
 
-    template<typename Key, typename T, class Less>
-    map_iterator<Key, T> map<Key, T, Less>::upper_bound(const Key& key) {
-        MapNode<Key, T>* retnode = _find_bound(this->root, key);
+    template<typename K, typename V, class Less>
+    typename map<K, V, Less>::map_iterator map<K, V, Less>::upper_bound(const K& key) {
+        map_node retnode = _find_bound(this->root, key);
         if (retnode == nullptr) {
             return this->end();
         }
         else {
-            return ++map_iterator<Key, T>(retnode);
+            return ++typename map<K, V, Less>::map_iterator(retnode);
         }
     }
 
-    template<typename Key, typename T, class Less>
-    map_iterator<Key, T> map<Key, T, Less>::lower_bound(const Key& key) {
-        MapNode<Key, T> *retnode = _find_bound(this->root, key);
+    template<typename K, typename V, class Less>
+    typename map<K, V, Less>::map_iterator map<K, V, Less>::lower_bound(const K& key) {
+        map_node retnode = _find_bound(this->root, key);
         if (retnode == nullptr) {
             return this->end();
         }
         else {
-            return map_iterator<Key, T>(retnode);
+            return typename map<K, V, Less>::map_iterator(retnode);
         }
     }
 
 
-    template<typename Key, typename T, class Less>
-    bool map<Key, T, Less>::remove(const Key &key) {
+    template<typename K, typename V, class Less>
+    bool map<K, V, Less>::remove(const K &key) {
 
-        MapNode<Key, T>* current = nullptr;
+        MapNode* current = nullptr;
         auto result = search(key);
 
         if (result == end()) {
             return false;
         }
 
-        MapNode<Key, T>* save = this->endNode;
+        MapNode* save = this->endNode;
         this->root->parent = nullptr;
 
-        MapNode<Key, T>* successor =  (++map_iterator<Key, T>(result)).get_ptr();
-        current = _remove(result.get_ptr(), successor);
+        MapNode* successor =  (++typename map<K, V, Less>::map_iterator(result)).ptr;
+        current = _remove(result.ptr, successor);
 
         if (current != nullptr) {
             delete current;
@@ -918,21 +934,21 @@ namespace adt {
         return true;
     }
 
-    template<typename Key, typename T, class Less>
-    map_iterator<Key, T> map<Key, T, Less>::remove(map_iterator<Key, T> itr) {
+    template<typename K, typename V, class Less>
+    typename map<K, V, Less>::map_iterator map<K, V, Less>::remove(typename map<K, V, Less>::map_iterator itr) {
 
         if (itr == end()) {
             return itr;
         }
 
-        MapNode<Key, T>* save = this->endNode;
+        MapNode* save = this->endNode;
         this->root->parent = nullptr;
 
-        MapNode<Key, T>* successor =  (++map_iterator<Key, T>(itr)).get_ptr();
-        MapNode<Key, T>* current = _remove(itr.get_ptr(), successor);
+        MapNode* successor =  (++typename map<K, V, Less>::map_iterator(itr)).ptr;
+        MapNode* current = _remove(itr.ptr, successor);
 
         if (current != nullptr) {
-            map_iterator<Key, T> retrnValue(current == successor ? itr.get_ptr() : successor);
+            typename map<K, V, Less>::map_iterator retrnValue(current == successor ? itr.ptr : successor);
 
             delete current;
             current = nullptr;
@@ -954,13 +970,13 @@ namespace adt {
         return this->end();
     }
 
-    template<typename Key, typename T, class Less>
-    map_iterator<Key, T> map<Key, T, Less>::search(const Key &key) {
+    template<typename K, typename V, class Less>
+    typename map<K, V, Less>::map_iterator map<K, V, Less>::search(const K &key) {
 
         if (this->root == nullptr) {
             return this->end();
         }
-        MapNode<Key, T> *current = this->root;
+        map_node current = this->root;
         while (current) {
             if (less(key, current->data.first)) {
                 current = current->left;
@@ -969,18 +985,18 @@ namespace adt {
                 current = current->right;
             }
             else {
-                return map_iterator<Key, T>(current);
+                return typename map<K, V, Less>::map_iterator(current);
             }
         }
 
         return this->end();
     }
 
-    template<typename Key, typename T, class Less>
-    T& map<Key, T, Less>::operator[](const Key& key) {
+    template<typename K, typename V, class Less>
+    V& map<K, V, Less>::operator[](const K& key) {
 
         bool added_new;
-        MapNode<Key, T> *current = bst_insert(added_new, key, T());
+        map_node current = bst_insert(added_new, key, V());
 
         if (!added_new) {
             return current->data.second;
@@ -996,8 +1012,8 @@ namespace adt {
         return current->data.second;
     }
 
-    template<typename Key, typename T, class Less>
-    const T& map<Key, T, Less>::at(const Key& key) const {
+    template<typename K, typename V, class Less>
+    const V& map<K, V, Less>::at(const K& key) const {
 
         auto it = search(key);
         if (it == end()) {
@@ -1007,8 +1023,8 @@ namespace adt {
         return it->second;
     }
 
-    template<typename Key, typename T, class Less>
-    T& map<Key, T, Less>::at(const Key& key) {
+    template<typename K, typename V, class Less>
+    V& map<K, V, Less>::at(const K& key) {
 
         auto it = search(key);
         if (it == end()) {
@@ -1018,22 +1034,22 @@ namespace adt {
         return it->second;
     }
 
-    template<typename Key, typename T, class Less>
-    void map<Key, T, Less>::rotate_right(MapNode<Key, T> *node) {
+    template<typename K, typename V, class Less>
+    void map<K, V, Less>::rotate_right(map_node node) {
 
         if (!node) {
             return;
         }
 
-        MapNode<Key, T> *left_child = node->left;
-        MapNode<Key, T> *left_right_child = left_child->right;
+        map_node left_child = node->left;
+        map_node left_right_child = left_child->right;
 
         node->left = left_right_child;
         if (left_right_child) {
             left_right_child->parent = node;
         }
 
-        MapNode<Key, T> *node_p = node->parent;
+        map_node node_p = node->parent;
         left_child->parent = node_p;
 
         if (node_p == nullptr) {
@@ -1050,22 +1066,22 @@ namespace adt {
         node->parent = left_child;
     }
 
-    template<typename Key, typename T, class Less>
-    void map<Key, T, Less>::rotate_left(MapNode<Key, T> *node) {
+    template<typename K, typename V, class Less>
+    void map<K, V, Less>::rotate_left(map_node node) {
 
         if (!node) {
             return;
         }
 
-        MapNode<Key, T> *right_child = node->right;
-        MapNode<Key, T> *right_left_child = right_child->left;
+        map_node right_child = node->right;
+        map_node right_left_child = right_child->left;
 
         node->right = right_left_child;
         if (right_left_child) {
             right_left_child->parent = node;
         }
 
-        MapNode<Key, T>  *node_p = node->parent;
+        MapNode  *node_p = node->parent;
         right_child->parent = node_p;
 
         if (node_p == nullptr) {
@@ -1082,15 +1098,45 @@ namespace adt {
         node->parent = right_child;
     }
 
-    template<typename Key, typename T, class Less>
-    size_t map<Key, T, Less>::size() {
+    template<typename K, typename V, class Less>
+    map_node map<K, V, Less>::_map_parent_of(map_node node) {
+        return node ? node->parent : nullptr;
+    }
+
+    template<typename K, typename V, class Less>
+    map_node map<K, V, Less>::_map_grandparent_of(map_node node) {
+        if (node) {
+            if (node->parent) {
+                return node->parent->parent;
+            }
+        }
+        return nullptr;
+    }
+
+    template<typename K, typename V, class Less>
+    map_node map<K, V, Less>::map_left_of(map_node node) {
+        return node ? node->left : nullptr;
+    }
+
+    template<typename K, typename V, class Less>
+    map_node map<K, V, Less>::map_right_of(map_node node) {
+        return node ? node->right : nullptr;
+    }
+
+    template<typename K, typename V, class Less>
+    void map<K, V, Less>::_map_assign_color(map_node node, char color) {
+        if (node) {
+            node->color = color;
+        }
+    }
+
+    template<typename K, typename V, class Less>
+    char map<K, V, Less>::_map_color_of(map_node node) {
+        return node ? node->color : (int8_t) MapNode::BLACK;
+    }
+
+    template<typename K, typename V, class Less>
+    size_t map<K, V, Less>::size() {
         return this->_size;
     }
-
-    template<typename Key, typename T, class Less>
-    map<Key, T, Less>* map<Key, T, Less>::get_map() {
-        return this;
-    }
-
 }
-#endif

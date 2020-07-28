@@ -1,176 +1,173 @@
-#ifndef LIST_H
-#define LIST_H
+#pragma once
 
 #include <memory>
 #include <iostream>
 #include <initializer_list>
 
 namespace adt {
-    
-    template<typename T>
-    struct Node {
-        T data;
-        std::shared_ptr<Node<T>> next;
-        std::shared_ptr<Node<T>> previous;
 
-        Node() noexcept;
-        explicit Node(const T& val) noexcept;
-        explicit Node(T&& val) noexcept;
-        explicit Node(const Node& node) = default;
-        explicit Node(Node&& node) = default;
-
-        template<typename... Args>
-        Node(Args&&... args) noexcept;
-
-        Node& operator=(Node&& node) = default;
-    };
-
-    template<typename T>
-    class list_iterator : public std::iterator<std::bidirectional_iterator_tag, T, std::ptrdiff_t , T*, T&> {
-    public:
-        using data_reference = T&;
-        using data_pointer = T*;
-        using const_data_reference = const T&;
-        using const_data_pointer = const T*; 
-
-        list_iterator(Node<T> *_ptr = nullptr) noexcept : ptr(_ptr) {}
-        list_iterator(const list_iterator<T>& other) = default;
-       
-        list_iterator<T>& operator=(const list_iterator<T>& other) = default;
-        list_iterator<T>& operator=(Node<T>* _ptr) {
-            this->ptr = _ptr;
-            return *this;
-        }
-
-        bool operator==(const list_iterator<T>& rhs) const {
-            return this->ptr == rhs.ptr;
-        }
-        bool operator!=(const list_iterator<T>& rhs) const {
-            return !(*this == rhs);
-        }        
-        
-        /* Prefix ++ operator. */
-        list_iterator<T>& operator++() {
-            if (ptr) {
-                ptr = ptr->next.get();
-            }
-            return *this;     
-        }
-
-        /* Postfix ++ operator. */
-        list_iterator<T> operator++(int) {
-            list_iterator<T> tmp(*this);
-            ++(*this);
-
-            return tmp;
-        }
-
-        /* Prefix -- operator. */
-        list_iterator<T>& operator--() {
-            if (ptr) {
-                ptr = ptr->previous.get();
-            }
-            return *this;
-        }
-
-        /* Postfix -- operator. */
-        list_iterator<T> operator--(int) {
-            list_iterator<T> tmp(*this);
-            --(*this);
-
-            return tmp;
-        }
-
-        const_data_reference operator*() {
-            return ptr->data;
-        }
-
-        const_data_pointer operator->() {
-            return &(ptr->data);
-        }
-
-        const_data_reference operator*() const {
-            return ptr->data;
-        }
-
-        const_data_pointer operator->() const {
-            return &(ptr->data);
-        }
-
-        Node<T>* get_ptr() {
-            return ptr;
-        }
-
-        const Node<T>* get_ptr() const {
-            return ptr;
-        }
-    protected:
-        Node<T> *ptr;
-    };
-
-    template<typename T>
-    class list_r_iterator : public list_iterator<T> {
-    public:
-        list_r_iterator(Node<T> *_ptr = nullptr) noexcept : list_iterator<T>(_ptr) {}
-        list_r_iterator(const list_r_iterator<T>& other) {
-            this->ptr = other.ptr;
-        }
-       
-        list_r_iterator<T>& operator=(const list_r_iterator<T>& other) = default;
-        list_r_iterator<T>& operator=(Node<T>* _ptr) {
-            this->ptr = _ptr;
-            return *this;
-        }    
-        
-        /* Prefix ++ operator. */
-        list_r_iterator<T>& operator++() {
-            if (this->ptr) {
-                this->ptr = this->ptr->previous.get();
-            }
-            return *this;     
-        }
-
-        /* Postfix ++ operator. */
-        list_r_iterator<T> operator++(int) {
-            list_r_iterator<T> tmp(*this);
-            ++(*this);
-
-            return tmp;
-        }
-
-        /* Prefix -- operator. */
-        list_r_iterator<T>& operator--() {
-            if (this->ptr) {
-                this->ptr = this->ptr->next.get();
-            }
-            return *this;
-        }
-
-        /* Postfix -- operator. */
-        list_r_iterator<T> operator--(int) {
-            list_r_iterator<T> tmp(*this);
-            --(*this);
-
-            return tmp;
-        }
-    };
-
-    
     template<typename T>
     class list {
     private:
-        std::shared_ptr<Node<T>> _head;
-        std::shared_ptr<Node<T>> _sentinel;
+
+        class Node {
+        public:
+
+            friend class list<T>;
+            friend class list_iterator;
+
+            T data;
+            std::shared_ptr<Node> next;
+            std::shared_ptr<Node> previous;
+
+            Node() noexcept : data(0), next(nullptr), previous(nullptr) {}
+            explicit Node(const T &val) noexcept : data(val), next(nullptr), previous(nullptr) {}
+            explicit Node(T&& val) noexcept : data(std::forward<T>(val)), next(nullptr), previous(nullptr)  {}
+            explicit Node(const Node& node) = default;
+            explicit Node(Node&& node) = default;
+
+            template<typename... Args>
+            Node(Args&&... args) noexcept : data(std::forward<Args>(args)...), next(nullptr), previous(nullptr) {}
+
+            Node& operator=(Node&& node) = default;
+        };
+
+        std::shared_ptr<Node> _head;
+        std::shared_ptr<Node> _sentinel;
         size_t _size;
 
         template<typename Container>
         void _copy_from_container(const Container& other);
-        void _push_empty(std::shared_ptr<Node<T>>& new_node);
+        void _push_empty(std::shared_ptr<Node>& new_node);
         void _pop_empty();
-        void _remove_node(Node<T>* node);
-        void _push_front(std::shared_ptr<Node<T>>&& new_node);
-        void _push_back(std::shared_ptr<Node<T>>&& new_node);
+        void _remove_node(Node* node);
+        void _push_front(std::shared_ptr<Node>&& new_node);
+        void _push_back(std::shared_ptr<Node>&& new_node);
     public:
+        class list_iterator : public std::iterator<std::bidirectional_iterator_tag, T, std::ptrdiff_t , T*, T&> {
+            friend class list<T>;
+            friend class list_r_iterator;
+        public:
+            using data_reference = T&;
+            using data_pointer = T*;
+            using const_data_reference = const T&;
+            using const_data_pointer = const T*; 
+
+            list_iterator(Node *_ptr = nullptr) noexcept : ptr(_ptr) {}
+            list_iterator(const list_iterator& other) = default;
+        
+            list_iterator& operator=(const list_iterator& other) = default;
+            list_iterator& operator=(Node* _ptr) {
+                this->ptr = _ptr;
+                return *this;
+            }
+
+            bool operator==(const list_iterator& rhs) const {
+                return this->ptr == rhs.ptr;
+            }
+            bool operator!=(const list_iterator& rhs) const {
+                return !(*this == rhs);
+            }        
+            
+            /* Prefix ++ operator. */
+            list_iterator& operator++() {
+                if (ptr) {
+                    ptr = ptr->next.get();
+                }
+                return *this;     
+            }
+
+            /* Postfix ++ operator. */
+            list_iterator operator++(int) {
+                list_iterator tmp(*this);
+                ++(*this);
+
+                return tmp;
+            }
+
+            /* Prefix -- operator. */
+            list_iterator& operator--() {
+                if (ptr) {
+                    ptr = ptr->previous.get();
+                }
+                return *this;
+            }
+
+            /* Postfix -- operator. */
+            list_iterator operator--(int) {
+                list_iterator tmp(*this);
+                --(*this);
+
+                return tmp;
+            }
+
+            const_data_reference operator*() {
+                return ptr->data;
+            }
+
+            const_data_pointer operator->() {
+                return &(ptr->data);
+            }
+
+            const_data_reference operator*() const {
+                return ptr->data;
+            }
+
+            const_data_pointer operator->() const {
+                return &(ptr->data);
+            }
+        protected:
+            Node *ptr;
+        };        
+
+        class list_r_iterator : public list_iterator {
+            friend class list<T>;
+        public:
+            list_r_iterator(Node *_ptr = nullptr) noexcept : list_iterator(_ptr) {}
+            list_r_iterator(const list_r_iterator& other) {
+                this->ptr = other.ptr;
+            }
+        
+            list_r_iterator& operator=(const list_r_iterator& other) = default;
+            list_r_iterator& operator=(Node* _ptr) {
+                this->ptr = _ptr;
+                return *this;
+            }    
+            
+            /* Prefix ++ operator. */
+            list_r_iterator& operator++() {
+                if (this->ptr) {
+                    this->ptr = this->ptr->previous.get();
+                }
+                return *this;     
+            }
+
+            /* Postfix ++ operator. */
+            list_r_iterator operator++(int) {
+                list_r_iterator tmp(*this);
+                ++(*this);
+
+                return tmp;
+            }
+
+            /* Prefix -- operator. */
+            list_r_iterator& operator--() {
+                if (this->ptr) {
+                    this->ptr = this->ptr->next.get();
+                }
+                return *this;
+            }
+
+            /* Postfix -- operator. */
+            list_r_iterator operator--(int) {
+                list_r_iterator tmp(*this);
+                --(*this);
+
+                return tmp;
+            }
+        };
+
+
         list();
         list(size_t n, const T& val);
         list(size_t n, T&& val);
@@ -192,7 +189,7 @@ namespace adt {
         void remove(const T& val);
         void remove(T&& val);
         /* Remove the element pointed to by this iterator. */
-        list_iterator<T> remove(list_iterator<T>& ite);
+        list_iterator remove(list_iterator& ite);
         void clear();
         
         /* Element access. */
@@ -200,10 +197,10 @@ namespace adt {
         T& back();
         const T& front() const;
         T& front();
-        list_iterator<T> begin();
-        list_iterator<T> end();
-        list_r_iterator<T> rbegin();
-        list_r_iterator<T> rend();
+        list_iterator begin();
+        list_iterator end();
+        list_r_iterator rbegin();
+        list_r_iterator rend();
 
         /* Operations. 
            TODO: add me. */
@@ -216,19 +213,6 @@ namespace adt {
     };
 
     template<typename T>
-    template<typename... Args>
-    Node<T>::Node(Args &&... args) noexcept : data(std::forward<Args>(args)...), next(nullptr), previous(nullptr) {}
-
-    template<typename T>
-    Node<T>::Node() noexcept : data(0), next(nullptr), previous(nullptr) {}
-
-    template<typename T>
-    Node<T>::Node(T&& val) noexcept : data(std::forward<T>(val)), next(nullptr), previous(nullptr)  {}
-
-    template<typename T>
-    Node<T>::Node(const T &val) noexcept : data(val), next(nullptr), previous(nullptr) {}
-
-    template<typename T>
     list<T>::list() : _head(nullptr),  _sentinel(nullptr), _size(0) {}
 
     template<typename T>
@@ -238,12 +222,12 @@ namespace adt {
             return;
         }
 
-        _head = std::make_shared<Node<T>>(val);
-        _sentinel = std::make_shared<Node<T>>();
+        _head = std::make_shared<Node>(val);
+        _sentinel = std::make_shared<Node>();
         _sentinel->previous = _head;
 
         for (size_t i = 1 ; i < n ; i++) {
-            std::shared_ptr<Node<T>> new_node(new Node<T>(val));
+            std::shared_ptr<Node> new_node(new Node(val));
             _sentinel->previous->next = new_node;
             new_node->previous = _sentinel->previous;
             _sentinel->previous = new_node;
@@ -259,12 +243,12 @@ namespace adt {
             return;
         }
 
-        _head = std::make_shared<Node<T>>(std::forward<T>(val));
-        _sentinel = std::make_shared<Node<T>>();
+        _head = std::make_shared<Node>(std::forward<T>(val));
+        _sentinel = std::make_shared<Node>();
         _sentinel->previous = _head;
 
         for (size_t i = 1 ; i < n ; i++) {
-            std::shared_ptr<Node<T>> new_node(new Node<T>(std::forward<T>(val)));
+            std::shared_ptr<Node> new_node(new Node(std::forward<T>(val)));
             _sentinel->previous->next = new_node;
             new_node->previous = _sentinel->previous;
             _sentinel->previous = new_node;
@@ -277,15 +261,15 @@ namespace adt {
     template<typename Container>
     void list<T>::_copy_from_container(const Container& other) {
         
-        _head = std::make_shared<Node<T>>(*(other.begin()));    
-        _sentinel = std::make_shared<Node<T>>();                        
+        _head = std::make_shared<Node>(*(other.begin()));    
+        _sentinel = std::make_shared<Node>();                        
         _sentinel->previous = _head;                                    
                                                                         
-        list_iterator<T> it = ++(other.begin());                 
-        list_iterator<T> end = other.end();                      
+        list_iterator it = ++(other.begin());                 
+        list_iterator end = other.end();                      
                                                                         
         for (; it != end ; it++) {                                      
-            std::shared_ptr<Node<T>> new_node(new Node<T>(*it));        
+            std::shared_ptr<Node> new_node(new Node(*it));        
             _sentinel->previous->next = new_node;                       
             new_node->previous = _sentinel->previous;                   
             _sentinel->previous = new_node;                             
@@ -332,11 +316,11 @@ namespace adt {
     }
 
     template<typename T>
-    void list<T>::_push_empty(std::shared_ptr<Node<T>>& new_node) {
+    void list<T>::_push_empty(std::shared_ptr<Node>& new_node) {
         
         if (_sentinel.get() == nullptr)
             /*Allocate a sentinel only if this is the very first call of push_* */
-            _sentinel = std::make_shared<Node<T>>();    
+            _sentinel = std::make_shared<Node>();    
         
         _head = new_node;               
         _sentinel->previous = _head;                
@@ -345,7 +329,7 @@ namespace adt {
     }
 
     template<typename T>
-    void list<T>::_push_back(std::shared_ptr<Node<T>>&& new_node) {
+    void list<T>::_push_back(std::shared_ptr<Node>&& new_node) {
 
         if (empty()) {
             _push_empty(new_node);                                 
@@ -361,16 +345,16 @@ namespace adt {
 
     template<typename T>
     void list<T>::push_back(const T &val) {
-        _push_back(std::make_shared<Node<T>>(val));
+        _push_back(std::move(std::make_shared<Node>(val)));
     }
 
     template<typename T>
     void list<T>::push_back(T&& val) {
-        _push_back(std::make_shared<Node<T>>(std::forward<T>(val)));
+        _push_back(std::move(std::make_shared<Node>(std::forward<T>(val))));
     }
 
     template<typename T>
-    void list<T>::_push_front(std::shared_ptr<Node<T>>&& new_node) {
+    void list<T>::_push_front(std::shared_ptr<Node>&& new_node) {
 
         if (empty()) {
             _push_empty(new_node);
@@ -386,12 +370,12 @@ namespace adt {
 
     template<typename T>
     void list<T>::push_front(const T& val) {
-        _push_front(std::make_shared<Node<T>>(val));
+        _push_front(std::move(std::make_shared<Node>(val)));
     }
 
     template<typename T>
     void list<T>::push_front(T&& val) {
-        _push_front(std::make_shared<Node<T>>(std::forward<T>(val)));
+        _push_front(std::move(std::make_shared<Node>(std::forward<T>(val))));
     }
 
     template<typename T>
@@ -432,7 +416,7 @@ namespace adt {
     }
 
     template<typename T>
-    void list<T>::_remove_node(Node<T>* node) {
+    void list<T>::_remove_node(Node* node) {
 
         if (node != _sentinel.get()) {
             /*This seems ugly, prolly need to fix it*/
@@ -454,9 +438,9 @@ namespace adt {
 
     template<typename T>
     void list<T>::remove(const T& val) {
-        Node<T>* current = _head.get();
-        Node<T>* save;
-        Node<T>* end = _sentinel.get();
+        Node* current = _head.get();
+        Node* save;
+        Node* end = _sentinel.get();
 
         while (current != end) {
             if (current->data == val) {
@@ -473,9 +457,9 @@ namespace adt {
 
     template<typename T>
     void list<T>::remove(T&& val) {
-        Node<T>* current = _head.get();
-        Node<T>* save;
-        Node<T>* end = _sentinel.get();
+        Node* current = _head.get();
+        Node* save;
+        Node* end = _sentinel.get();
 
         while (current != end) {
             if (current->data == val) {
@@ -491,14 +475,14 @@ namespace adt {
     }
 
     template<typename T>
-    list_iterator<T> list<T>::remove(list_iterator<T>& ite) {
-        _remove_node(ite.get_ptr());
+    typename list<T>::list_iterator list<T>::remove(list_iterator& ite) {
+        _remove_node(ite.ptr);
 
         if (_size == 0) {
             return end();
         }
         else {
-            return list_iterator<T>(_head->next.get());
+            return list_iterator(_head->next.get());
         }
     }
 
@@ -539,32 +523,32 @@ namespace adt {
     }
 
     template<typename T>
-    list_iterator<T> list<T>::begin() {
+    typename list<T>::list_iterator list<T>::begin() {
         if (_head.get()) 
-            return list_iterator<T>(_head.get());
+            return list_iterator(_head.get());
         else 
-            return list_iterator<T>(_sentinel.get());
+            return list_iterator(_sentinel.get());
     }
 
     template<typename T>
-    list_iterator<T> list<T>::end() {
-        return list_iterator<T>(_sentinel.get());
+    typename list<T>::list_iterator list<T>::end() {
+        return list_iterator(_sentinel.get());
     }
 
     /* Really not sure about these 2. */
     template<typename T>
-    list_r_iterator<T> list<T>::rbegin() {
+    typename list<T>::list_r_iterator list<T>::rbegin() {
         if (_sentinel != nullptr) {
-            return list_r_iterator<T>(_sentinel->previous.get());
+            return list_r_iterator(_sentinel->previous.get());
         }
         else {
-            return list_r_iterator<T>(nullptr);
+            return list_r_iterator(nullptr);
         }
     }
 
     template<typename T>
-    list_r_iterator<T> list<T>::rend() {
-        return list_r_iterator<T>(nullptr);
+    typename list<T>::list_r_iterator list<T>::rend() {
+        return list_r_iterator(nullptr);
     }
 
     template<typename T>
@@ -585,5 +569,3 @@ namespace adt {
         swap(_size, other._size);
     }
 }
-
-#endif

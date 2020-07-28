@@ -3,9 +3,11 @@
 #include <cassert>
 #include <vector>
 #include <set>
+#include <string>
 
 #include "list.h"
 #include "vector.h"
+#include "map.h"
 #include "set.h"
 
 void run_list_test() {
@@ -251,18 +253,95 @@ void run_multiset_test() {
 
 }
 
-void run_map_test() {
+static void gen_random (std::string& str, const int len) {
+    static const char alphanum[] =
+        "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz";
 
+    for (int i = 0; i < len; ++i) {
+        str.push_back (alphanum[rand() % (sizeof(alphanum) - 1)]);
+    }
 }
-    
+
+bool reverse_order (int x, int y) {
+    return x >= y;
+}
+
+void run_map_test() {
+    adt::map<int, std::string> mymap;
+    std::vector<int> sorted_test;
+    std::string str;
+
+    srand (time (NULL));
+
+    /* operator[] test.  */
+    for (size_t i = 0 ; i < 15000 ; i++) {
+        gen_random (str, 15);
+        mymap[rand () + 2] = str;
+    }
+
+    /* sort test.  */
+    for (auto it = mymap.begin () ; it != mymap.end () ; it++) {
+        sorted_test.push_back (it->first);
+    }
+    assert (std::is_sorted (sorted_test.begin (), sorted_test.end ()));
+
+    /* remove () test.  */
+    for (auto it = mymap.begin () ; it != mymap.end () ; ) {
+        it = mymap.remove (it);
+    }
+    assert (mymap.begin () == mymap.end ());
+    assert (mymap.size () == 0);
+
+    /* add () test.  */
+    for (size_t i = 0 ; i < 15000 ; i++) {
+        gen_random (str, 10);
+        mymap.add (rand () + 2, str);
+    }
+
+    /* at () should throw exception.  */
+    try {
+        /* lets hope rand () + 2 didn't overflow and cause '1' to be added.  */
+        mymap.at (1);
+        assert (0);
+    } catch (const std::out_of_range& oor) {}
+
+    /* clear () test.  */
+    mymap.clear ();
+    assert (mymap.begin () == mymap.end ());
+    assert (mymap.size () == 0);
+
+    /* reverse iterators test.  */
+    sorted_test.clear ();
+    for (auto it = mymap.rbegin () ; it != mymap.rend () ; it++) {
+        sorted_test.push_back (it->first);
+    }
+    assert (std::is_sorted (sorted_test.begin (), sorted_test.end (), reverse_order));
+}
+  
 void run_multimap_test() {
 
 }
-
+/*
 void run_unordered_set_test() {
+    adt::unordered_set<int> myints;
+    adt::vector<int> search_vec;
+    int val;
 
+    srand (time (NULL));
+
+    for (size_t i = 0 ; i < 150 ; i++) {
+        val = rand ();
+        myints.insert (val);
+        search_vec.push_back (val);
+    }
+
+    for (size_t i = 0 ; i < 150 ; i++) {
+        assert (myints.search (search_vec[i]) == search_vec[i]);
+    }
 }
-
+*/
 void run_unordered_map_test() {
     
 }
@@ -274,7 +353,7 @@ int main() {
     run_multiset_test();
     run_map_test();
     run_multimap_test();
-    run_unordered_set_test();
+ //   run_unordered_set_test();
     run_unordered_map_test();
 
     return 0;    

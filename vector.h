@@ -1,5 +1,4 @@
-#ifndef vector_H
-#define vector_H
+#pragma once
 
 #include <iostream>
 #include <cstdlib>
@@ -534,5 +533,3 @@ namespace adt {
         this->_capacity = 0;
     }
 }
-
-#endif

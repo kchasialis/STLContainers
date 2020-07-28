@@ -1,8 +1,5 @@
-#ifndef UNORDERED_MAP_H
-#define UNORDERED_MAP_H
+#pragma once
 
 namespace adt {
     
 }
-
-#endif
