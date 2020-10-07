@@ -6,77 +6,171 @@
 namespace adt {
 
     template<typename T>
+    class const_vector_iterator;
+
+    template<typename T>
     class vector_iterator : public std::iterator<std::random_access_iterator_tag, T, std::ptrdiff_t , T*, T&> {
     public:
         vector_iterator(T **ptr = nullptr) : _ptr(ptr) {}
-        vector_iterator(const vector_iterator<T>& other) = default;
+        vector_iterator(const vector_iterator& other) = default;
 
-        vector_iterator<T>& operator=(const vector_iterator<T>& other) = default;
-        vector_iterator<T>& operator=(T** _ptr) {
-            this->_ptr = _ptr;
+        vector_iterator &operator=(const vector_iterator &other) {
+            this->_ptr = other._ptr;
+            return *this;
+        }
+        vector_iterator &operator=(T **ptr) {
+            this->_ptr = ptr;
             return *this;
         }
 
-        bool operator==(const vector_iterator<T>& other) const {
+        bool operator==(const vector_iterator &other) const {
             return this->_ptr == other._ptr;
         }
-        bool operator!=(const vector_iterator<T>& other) const {
+        bool operator!=(const vector_iterator &other) const {
             return this->_ptr != other._ptr;
         }
-        vector_iterator<T>& operator+=(const std::ptrdiff_t& val) {
-            this->_ptr += val;
+
+        virtual vector_iterator &operator+=(const std::ptrdiff_t &val) {
+            _ptr += val;
             return *this;
         }
-        vector_iterator<T>& operator-=(const std::ptrdiff_t& diff_val) {
-            this->_ptr -= diff_val;
+        virtual vector_iterator &operator-=(const std::ptrdiff_t &diff_val) {
+            _ptr -= diff_val;
             return *this;
         }
-        /*Pre-(inc/dec)rement operator*/
-        vector_iterator<T>& operator++() {
-            this->_ptr++;
+
+        virtual vector_iterator &operator++() {
+            _ptr++;
             return *this;
         }
-        vector_iterator<T>& operator--() {
-            this->_ptr--;
+        virtual vector_iterator operator++(int) & {
+            auto temp(*this);
+            _ptr++;
+            return temp;
+        }
+        virtual vector_iterator &operator--() {
+            _ptr--;
             return *this;
         }
-        /*Post-(inc/dec)rement*/
-        vector_iterator<T> operator++(int) {
+        virtual vector_iterator operator--(int) & {
             auto temp(*this);
-            this->_ptr++;
+            _ptr--;
             return temp;
         }
-        vector_iterator<T> operator--(int) {
+        virtual vector_iterator operator+(const std::ptrdiff_t &val) & {
+            T **tmp_ptr = this->_ptr;
+            _ptr += val;
             auto temp(*this);
-            this->_ptr--;
+            _ptr = tmp_ptr;
             return temp;
         }
-        vector_iterator<T> operator+(const std::ptrdiff_t& val) {
-            T** tmp_ptr = this->_ptr;
-            this->_ptr += val;
+        virtual vector_iterator operator-(const std::ptrdiff_t &val) & {
+            T **tmp_ptr = this->_ptr;
+            _ptr -= val;
             auto temp(*this);
-            this->_ptr = tmp_ptr;
+            _ptr = tmp_ptr;
             return temp;
         }
-        vector_iterator<T> operator-(const std::ptrdiff_t& val) {
-            T** tmp_ptr = this->_ptr;
-            this->_ptr -= val;
-            auto temp(*this);
-            this->_ptr = tmp_ptr;
-            return temp;
-        }
-        std::ptrdiff_t operator-(const vector_iterator<T>& other) {
+        std::ptrdiff_t operator-(const vector_iterator &other) {
             return std::distance(other._ptr, this->_ptr);
         }
+
         T& operator*() {
-            return *(*this->_ptr);
+            return *(*_ptr);
         }
         const T& operator*() const {
-            return *(*this->_ptr);
+            return *(*_ptr);
         }
         T* operator->() {
-            return *this->_ptr;
+            return *(_ptr);
         }
+        const T* operator->() const {
+            return *(_ptr);
+        }
+
+    protected:
+        friend class const_vector_iterator<T>;
+        T **_ptr;
+    };
+
+    template<typename T>
+    class const_vector_iterator : public std::iterator<std::random_access_iterator_tag, T, std::ptrdiff_t , T*, T&> {
+    public:
+        const_vector_iterator(T **ptr = nullptr) : _ptr(ptr) {}
+        const_vector_iterator(const const_vector_iterator &other) = default;
+        const_vector_iterator(const vector_iterator<T> &other) : _ptr(other._ptr) {}
+
+        const_vector_iterator &operator=(const const_vector_iterator &other) {
+            this->_ptr = other._ptr;
+            return *this;
+        }
+        const_vector_iterator &operator=(const vector_iterator<T> &other) {
+            this->_ptr = other._ptr;
+        }
+        const_vector_iterator &operator=(T **ptr) {
+            this->_ptr = ptr;
+            return *this;
+        }
+
+        bool operator==(const const_vector_iterator &other) const {
+            return this->_ptr == other._ptr;
+        }
+        bool operator!=(const const_vector_iterator &other) const {
+            return this->_ptr != other._ptr;
+        }
+
+        virtual const_vector_iterator &operator+=(const std::ptrdiff_t &val) {
+            _ptr += val;
+            return *this;
+        }
+        virtual const_vector_iterator &operator-=(const std::ptrdiff_t &diff_val) {
+            _ptr -= diff_val;
+            return *this;
+        }
+
+        virtual const_vector_iterator &operator++() {
+            _ptr++;
+            return *this;
+        }
+        virtual const_vector_iterator operator++(int) & {
+            auto temp(*this);
+            _ptr++;
+            return temp;
+        }
+        virtual const_vector_iterator &operator--() {
+            _ptr--;
+            return *this;
+        }
+        virtual const_vector_iterator operator--(int) & {
+            auto temp(*this);
+            _ptr--;
+            return temp;
+        }
+        virtual const_vector_iterator operator+(const std::ptrdiff_t &val) & {
+            T **tmp_ptr = this->_ptr;
+            _ptr += val;
+            auto temp(*this);
+            _ptr = tmp_ptr;
+            return temp;
+        }
+        virtual const_vector_iterator operator-(const std::ptrdiff_t &val) & {
+            T **tmp_ptr = this->_ptr;
+            _ptr -= val;
+            auto temp(*this);
+            _ptr = tmp_ptr;
+            return temp;
+        }
+        std::ptrdiff_t operator-(const const_vector_iterator &other) {
+            return std::distance(other._ptr, this->_ptr);
+        }
+
+        const T& operator*() const {
+            return *(*_ptr);
+        }
+        const T* operator->() const {
+            return *(_ptr);
+        }
+
     protected:
         T **_ptr;
     };
@@ -84,170 +178,161 @@ namespace adt {
     template<typename T>
     class vector_r_iterator : public vector_iterator<T> {
     public:
-        vector_r_iterator(T** ptr = nullptr) : vector_iterator<T>(ptr) {}
-        vector_r_iterator(const vector_iterator<T>& other) {
-            this->_ptr = other._ptr;
-        }
-        vector_r_iterator(const vector_r_iterator<T>& other) {
+        vector_r_iterator(T **ptr = nullptr) : vector_iterator<T>(ptr) {}
+        vector_r_iterator(const vector_r_iterator &other) {
             this->_ptr = other._ptr;
         }
 
-        vector_r_iterator<T>& operator=(const vector_iterator<T>& other) {
-            this->_ptr = other._ptr;
-        }
-        vector_r_iterator<T>& operator=(const vector_r_iterator<T>& other) = default;
-        vector_r_iterator<T>& operator=(T** _ptr) {
-            this->_ptr = _ptr;
-            return *this;
-        }
-
-        vector_r_iterator<T>& operator+=(const std::ptrdiff_t& val) {
+        vector_r_iterator<T> &operator+=(const std::ptrdiff_t &val) {
             this->_ptr -= val;
             return *this;
         }
-        vector_r_iterator<T>& operator-=(const std::ptrdiff_t& diff_val) {
+        vector_r_iterator<T> &operator-=(const std::ptrdiff_t &diff_val) {
             this->_ptr += diff_val;
             return *this;
         }
 
-        /* Pre-increment operator. */
-        vector_r_iterator<T>& operator++() {
+        vector_r_iterator<T> &operator++() {
             this->_ptr--;
             return *this;
         }
-        
-        /* Post-increment operator. */
         vector_r_iterator<T> operator++(int) {
             auto temp(*this);
             this->_ptr--;
             return temp;
         }
-        
-        /* Pre-decrement operator. */
-        vector_r_iterator<T>& operator--() {
+        vector_r_iterator<T> &operator--() {
             this->_ptr++;
             return *this;
         }
-        
-        /* Post-decrement operator. */
         vector_r_iterator<T> operator--(int) {
             auto temp(*this);
             this->_ptr++;
             return temp;
         }
 
-        vector_r_iterator<T> operator+(const std::ptrdiff_t& val) {
-            T** tmp_ptr = this->_ptr;
+        vector_r_iterator<T> operator+(const std::ptrdiff_t &val) {
+            T **tmp_ptr = this->_ptr;
             this->_ptr -= val;
             auto temp(*this);
             this->_ptr = tmp_ptr;
             return temp;
         }
-        vector_r_iterator<T> operator-(const std::ptrdiff_t& val) {
-            T** tmp_ptr = this->_ptr;
+        vector_r_iterator<T> operator-(const std::ptrdiff_t &val) {
+            T **tmp_ptr = this->_ptr;
             this->_ptr += val;
             auto temp(*this);
             this->_ptr = tmp_ptr;
             return temp;
-        }
-        std::ptrdiff_t operator-(const vector_r_iterator<T>& other) {
-            return std::distance(this->_ptr, other._ptr);
         }
     };
 
     template<typename T>
     class vector {
     private:
-        T** data;
+        using value_type = T;
+        using reference = T&;
+        using const_reference = const T&;
+        using pointer = T*;
+        using const_pointer = const T*;
+        using iterator = adt::vector_iterator<T>;
+        using const_iterator = adt::const_vector_iterator<T>;
+        using reverse_iterator = adt::vector_r_iterator<T>;
+        /* TODO: add const reverse iterator and methods.  */
+
+        pointer *_data;
         size_t _size;
         size_t _capacity;
     public:
         vector();
         explicit vector(size_t n);
-        vector(size_t n, const T& val);
-        vector(size_t n, T &&val);
-        explicit vector(const vector& other);
+        vector(size_t n, const value_type &val);
+        vector(size_t n, value_type &&val);
+        vector(const vector& other);
         vector(vector&& other) noexcept;
         ~vector();
 
         vector& operator=(vector other);
 
-        vector_iterator<T> begin();
-        vector_iterator<T> end();
-        vector_r_iterator<T> rbegin();
-        vector_r_iterator<T> rend();
-        const vector_iterator<T> cbegin();
-        const vector_iterator<T> cend();
+        iterator begin();
+        const_iterator begin() const noexcept;
+        iterator end();
+        const_iterator end() const noexcept;
+        reverse_iterator rbegin();
+        reverse_iterator rend();
+        const_iterator cbegin() const noexcept;
+        const_iterator cend() const noexcept;
 
-        /*Modifiers*/
-        void push_back(const T& val);
-        void push_back(T&& val);
+        /* Modifiers.  */
+        void push_back(const_reference val);
+        void push_back(value_type &&val);
+        /* TODO: add emplace, emplace_back and wrap push_back's into this.  */
         void pop_back();
         void clear();
         void erase(size_t pos);
-        vector_iterator<T> erase(vector_iterator<T>& ite);
+        iterator erase(const_iterator ite);
 
-        /*Capacity*/
+        /* Capacity.  */
         size_t size() const;
         size_t capacity() const;
         void resize(size_t new_size);
-        void resize(size_t new_size, const T& val);
-        void resize(size_t new_size, T &&val);
+        void resize(size_t new_size, const_reference val);
+        void resize(size_t new_size, value_type &&val);
         void reserve(size_t new_cap);
         bool empty() const;
 
-        /*Element access*/
-        T& operator[](size_t index);
-        const T& operator[](size_t index) const;
-        T& at(size_t index);
-        const T& at(size_t index) const;
-        T& back();
-        const T& back() const;
-        T& front();
-        const T& front() const;
+        /* Element access.  */
+        reference operator[](size_t index);
+        const_reference operator[](size_t index) const;
+        reference at(size_t index);
+        const_reference at(size_t index) const;
+        reference back();
+        const_reference back() const;
+        reference front();
+        const_reference front() const;
 
         friend void swap(vector& lhs, vector& rhs) {
             using std::swap;
 
-            swap(lhs.data, rhs.data);
+            swap(lhs._data, rhs._data);
             swap(lhs._size, rhs._size);
             swap(lhs._capacity, rhs._capacity);
         }
     };
 
     template<typename T>
-    vector<T>::vector() : data(nullptr), _size(0), _capacity(0) {}
+    vector<T>::vector() : _data(nullptr), _size(0), _capacity(0) {}
 
     template<typename T>
     vector<T>::vector(size_t n) : _size(n), _capacity(n) {
-        this->data = (T **) calloc(n, sizeof(T*));
+        _data = (pointer *) calloc(n, sizeof(pointer));
     }
 
     template<typename T>
-    vector<T>::vector(size_t n, const T &val) : _size(n), _capacity(n) {
-        this->data = (T **) calloc(n, sizeof(T*));
-        if (this->data != nullptr) {
+    vector<T>::vector(size_t n, const_reference val) : _size(n), _capacity(n) {
+        _data = (pointer *) calloc(n, sizeof(pointer));
+        if (_data != nullptr) {
             for (size_t i = 0 ; i < n ; i++) {
-                this->data[i] = new T(val);
+                _data[i] = new value_type(val);
             }
         }
     }
 
     template<typename T>
-    vector<T>::vector(size_t n, T &&val) : _size(n), _capacity(n) {
-        this->data = (T **) calloc(n, sizeof(T*));
-        if (this->data != nullptr) {
+    vector<T>::vector(size_t n, value_type &&val) : _size(n), _capacity(n) {
+        _data = (pointer *) calloc(n, sizeof(pointer));
+        if (_data != nullptr) {
             for (size_t i = 0 ; i < n ; i++) {
-                this->data[i] = new T(std::forward<T>(val));
+                _data[i] = new value_type(std::forward<value_type>(val));
             }
         }
     }
 
     template<typename T>
     vector<T>::vector(const vector &other) : _size(other._size), _capacity(other._capacity) {
-        this->data = (T **) malloc(_capacity * sizeof(T*));
-        for (size_t i = 0 ; i < this->_size ; i++) {
-            this->data[i] = new T(other[i]);
+        _data = (pointer *) malloc(_capacity * sizeof(pointer));
+        for (size_t i = 0 ; i < _size ; i++) {
+            _data[i] = new value_type(other[i]);
         }
     }
 
@@ -258,13 +343,13 @@ namespace adt {
 
     template<typename T>
     vector<T>::~vector() {
-        for (size_t i = 0 ; i < this->_size ; i++) {
-            if (data[i]) {
-                delete data[i];
+        for (size_t i = 0 ; i < _size ; i++) {
+            if (_data[i]) {
+                delete _data[i];
             }
         }
-        if (data) {
-            free(data);
+        if (_data) {
+            free(_data);
         }
     }
 
@@ -277,94 +362,102 @@ namespace adt {
     }
 
     template<typename T>
-    vector_iterator<T> vector<T>::begin() {
-        return vector_iterator<T>(&data[0]);
+    typename vector<T>::iterator vector<T>::begin() {
+        return iterator(&_data[0]);
     }
 
     template<typename T>
-    vector_iterator<T> vector<T>::end() {
-        return vector_iterator<T>(&data[_size]);
+    typename vector<T>::const_iterator vector<T>::begin() const noexcept {
+        return const_iterator(&_data[0]);
     }
 
     template<typename T>
-    vector_r_iterator<T> vector<T>::rbegin() {
-        return vector_r_iterator<T>(&data[_size - 1]);
+    typename vector<T>::iterator vector<T>::end() {
+        return iterator(&_data[_size]);
+    }
+
+    template<typename T>
+    typename vector<T>::const_iterator vector<T>::end() const noexcept {
+        return const_iterator(&_data[_size]);
+    }
+
+    template<typename T>
+    typename vector<T>::reverse_iterator vector<T>::rbegin() {
+        return reverse_iterator(&_data[_size - 1]);
     }  
 
-    /* TODO: See this again, I dont like it.
-        Maybe change it to nullptr. */
     template<typename T>
-    vector_r_iterator<T> vector<T>::rend() {
-        return vector_r_iterator<T>(&data[-1]);
+    typename vector<T>::reverse_iterator vector<T>::rend() {
+        return reverse_iterator(&_data[-1]);
     }
 
     template<typename T>
-    const vector_iterator<T> vector<T>::cbegin() {
-        return vector_iterator<const T>(&data[0]);
+    typename vector<T>::const_iterator vector<T>::cbegin() const noexcept {
+        return const_iterator(&_data[0]);
     }
 
     template<typename T>
-    const vector_iterator<T> vector<T>::cend() {
-        return vector_iterator<const T>(&data[_size]);
+    typename vector<T>::const_iterator vector<T>::cend() const noexcept {
+        return const_iterator(&_data[_size]);
     }
 
     template<typename T>
-    void vector<T>::push_back(const T &val) {
-        if (this->_size < this->_capacity) {
-            data[this->_size++] = new T(val);
+    void vector<T>::push_back(const_reference val) {
+        if (_size < _capacity) {
+            _data[_size++] = new value_type(val);
         } else {
-            size_t new_cap = 1 + this->_capacity * 2;
-            T** new_data = (T**) realloc(data, new_cap * sizeof(T*));
+            size_t new_cap = 1 + _capacity * 2;
+            pointer *new_data = (pointer *) realloc(_data, new_cap * sizeof(pointer));
             if (new_data != nullptr) {
-                this->data = new_data;
-                this->_capacity = new_cap;
-                this->data[this->_size++] = new T(val);
+                _data = new_data;
+                _data[_size++] = new value_type(val);
+                _capacity = new_cap;
             }
         }
     }
 
     template<typename T>
-    void vector<T>::push_back(T &&val) {
-        if (this->_size < this->_capacity) {
-            data[this->_size++] = new T(std::forward<T>(val));
+    void vector<T>::push_back(value_type &&val) {
+        if (_size < _capacity) {
+            _data[_size++] = new value_type(std::forward<value_type>(val));
         } else {
-            size_t new_cap = 1 + this->_capacity * 2;
-            T** new_data = (T**) realloc(data, new_cap * sizeof(T*));
+            size_t new_cap = 1 + _capacity * 2;
+            pointer *new_data = (pointer *) realloc(_data, new_cap * sizeof(pointer));
             if (new_data != nullptr) {
-                this->data = new_data;
-                this->_capacity = new_cap;
-                this->data[this->_size++] = new T(std::forward<T>(val));
+                _data = new_data;
+                _capacity = new_cap;
+                _data[_size++] = new value_type(std::forward<value_type>(val));
             }
         }
     }
 
     template<typename T>
     void vector<T>::pop_back() {
-        delete data[this->_size - 1];
-        this->_size--;
+        delete _data[_size - 1];
+        _size--;
     }
 
     template<typename T>
     void vector<T>::erase(size_t pos) {
-        if (pos < this->_size) {
-            delete data[pos];
+        if (pos < _size) {
+            delete _data[pos];
             for (size_t i = pos ; i < _size - 1 ; i++) {
-                data[i] = data[i + 1];
+                _data[i] = _data[i + 1];
             }
             _size--;
         }
     }
 
     template<typename T>
-    vector_iterator<T> vector<T>::erase(vector_iterator<T> &ite) {
+    typename vector<T>::iterator vector<T>::erase(const_iterator ite) {
         if (ite != end()) {
             std::ptrdiff_t shift_idx = ite - begin();
-            delete data[shift_idx];
+            delete _data[shift_idx];
             for (std::ptrdiff_t i = shift_idx ; i < _size - 1; i++) {
-                data[i] = data[i + 1];
+                _data[i] = _data[i + 1];
             }
             _size--;
-            return vector_iterator<T>(&data[shift_idx]);
+            return iterator(&_data[shift_idx]);
         }
         else {
             return end();
@@ -372,134 +465,134 @@ namespace adt {
     }
 
     template<typename T>
-    T &vector<T>::operator[](size_t index) {
-        return *(data[index]);
+    typename vector<T>::reference vector<T>::operator[](size_t index) {
+        return *(_data[index]);
     }
 
     template<typename T>
-    const T &vector<T>::operator[](size_t index) const {
-        return *(data[index]);
+    typename vector<T>::const_reference vector<T>::operator[](size_t index) const {
+        return *(_data[index]);
     }
 
     template<typename T>
-    T &vector<T>::at(size_t index) {
-        if (index >= this->_size) {
+    typename vector<T>::reference vector<T>::at(size_t index) {
+        if (index >= _size) {
             throw std::out_of_range("Index is out of vector range");
         }
-        return *(data[index]);
+        return *(_data[index]);
     }
 
     template<typename T>
-    const T &vector<T>::at(size_t index) const {
-        if (index >= this->_size) {
+    typename vector<T>::const_reference vector<T>::at(size_t index) const {
+        if (index >= _size) {
             throw std::out_of_range("Index is out of vector range");
         }
-        return *(data[index]);
+        return *(_data[index]);
     }
 
     template<typename T>
-    T &vector<T>::back() {
-        return *(this->data[this->_size - 1]);
+    typename vector<T>::reference vector<T>::back() {
+        return *(_data[_size - 1]);
     }
 
     template<typename T>
-    const T &vector<T>::back() const {
-        return *(this->data[this->_size - 1]);
+    typename vector<T>::const_reference vector<T>::back() const {
+        return *(_data[_size - 1]);
     }
 
     template<typename T>
-    T &vector<T>::front() {
-        return *(this->data[0]);
+    typename vector<T>::reference vector<T>::front() {
+        return *(_data[0]);
     }
 
     template<typename T>
-    const T &vector<T>::front() const {
-        return *(this->data[0]);
+    typename vector<T>::const_reference vector<T>::front() const {
+        return *(_data[0]);
     }
 
     template<typename T>
     size_t vector<T>::size() const {
-        return this->_size;
+        return _size;
     }
 
     template<typename T>
     size_t vector<T>::capacity() const {
-        return this->_capacity;
+        return _capacity;
     }
 
     template<typename T>
     void vector<T>::resize(size_t new_size) {
-        if (new_size < this->_size) {
-            for (size_t i = new_size ; i < this->_size ; i++) {
+        if (new_size < _size) {
+            for (size_t i = new_size ; i < _size ; i++) {
                 /*Destroy these elements*/
-                delete data[i];
+                delete _data[i];
             }
         }
-        else if (new_size > this->_size && new_size < this->_capacity) {
-            for (size_t i = this->_size ; i < new_size ; i++) {
-                data[i] = new T();
+        else if (new_size > _size && new_size < _capacity) {
+            for (size_t i = _size ; i < new_size ; i++) {
+                _data[i] = new value_type();
             }
         }
-        else if (new_size > this->_size && new_size > this->_capacity) {
-            T** new_data = (T **) realloc(data, new_size * sizeof(T*));
+        else if (new_size > _size && new_size > _capacity) {
+            pointer *new_data = (pointer *) realloc(_data, new_size * sizeof(pointer));
             if (new_data != nullptr) {
-                this->data = new_data;
-                this->_capacity = new_size;
+                _data = new_data;
+                _capacity = new_size;
             }
         }
-        this->_size = new_size;
+        _size = new_size;
     }
 
     template<typename T>
-    void vector<T>::resize(size_t new_size, const T &val) {
-        if (new_size < this->_size) {
-            for (size_t i = new_size ; i < this->_size ; i++) {
+    void vector<T>::resize(size_t new_size, const value_type &val) {
+        if (new_size < _size) {
+            for (size_t i = new_size ; i < _size ; i++) {
                 /*Destroy these elements*/
-                delete data[i];
+                delete _data[i];
             }
-            this->_size = new_size;
+            _size = new_size;
         }
-        else if (new_size > this->_size && new_size < this->_capacity) {
-            for (size_t i = this->_size ; i < new_size ; i++) {
-                data[i] = new T(val);
+        else if (new_size > _size && new_size < _capacity) {
+            for (size_t i = _size ; i < new_size ; i++) {
+                _data[i] = new value_type(val);
             }
         }
-        else if (new_size > this->_size && new_size > this->_capacity) {
-            T** new_data = (T **) realloc(data, new_size * sizeof(T*));
+        else if (new_size > _size && new_size > _capacity) {
+            pointer *new_data = (pointer *) realloc(_data, new_size * sizeof(pointer));
             if (new_data != nullptr) {
-                this->data = new_data;
-                for (size_t i = this->_size ; i < new_size ; i++) {
-                    data[i] = new T(val);
+                _data = new_data;
+                for (size_t i = _size ; i < new_size ; i++) {
+                    _data[i] = new value_type(val);
                 }
-                this->_size = new_size;
-                this->_capacity = new_size;
+                _size = new_size;
+                _capacity = new_size;
             }
         }
     }
 
     template<typename T>
-    void vector<T>::resize(size_t new_size, T &&val) {
-        if (new_size < this->_size) {
-            for (size_t i = new_size ; i < this->_size ; i++) {
+    void vector<T>::resize(size_t new_size, value_type &&val) {
+        if (new_size < _size) {
+            for (size_t i = new_size ; i < _size ; i++) {
                 /*Destroy these elements*/
-                delete data[i];
+                _data[i];
             }
-            this->_size = new_size;
+            _size = new_size;
         }
-        else if (new_size > this->_size && new_size < this->_capacity) {
-            for (size_t i = this->_size ; i < new_size ; i++) {
-                data[i] = new T(std::forward<T>(val));
+        else if (new_size > _size && new_size < _capacity) {
+            for (size_t i = _size ; i < new_size ; i++) {
+                _data[i] = new value_type(std::forward<value_type>(val));
             }
         }
-        else if (new_size > this->_size && new_size > this->_capacity) {
-            T** new_data = (T **) realloc(data, new_size * sizeof(T*));
+        else if (new_size > _size && new_size > _capacity) {
+            pointer *new_data = (pointer *) realloc(_data, new_size * sizeof(pointer));
             if (new_data != nullptr) {
-                this->data = new_data;
-                for (size_t i = this->_size ; i < new_size ; i++) {
-                    data[i] = new T(std::forward<T>(val));
+                _data = new_data;
+                for (size_t i = _size ; i < new_size ; i++) {
+                    _data[i] = new value_type(std::forward<value_type>(val));
                 }
-                this->_size = new_size;
-                this->_capacity = new_size;
+                _size = new_size;
+                _capacity = new_size;
             }
         }
     }
@@ -507,29 +600,27 @@ namespace adt {
 
     template<typename T>
     void vector<T>::reserve(size_t new_cap) {
-        if (new_cap > this->_capacity) {
-            T** new_data = (T **) realloc(data, new_cap * sizeof(T*));
+        if (new_cap > _capacity) {
+            pointer *new_data = (pointer *) realloc(_data, new_cap * sizeof(pointer));
             if (new_data != nullptr) {
-                this->data = new_data;
-                this->_capacity = new_cap;
+                _data = new_data;
+                _capacity = new_cap;
             }
         }
     }
 
     template<typename T>
     bool vector<T>::empty() const {
-        return this->_size == 0;
+        return _size == 0;
     }
 
     template<typename T>
     void vector<T>::clear() {
-        for (size_t i = 0 ; i < this->_size ; i++) {
-            delete data[i];
-            data[i] = nullptr;
+        for (size_t i = 0 ; i < _size ; i++) {
+            delete _data[i];
+            _data[i] = nullptr;
         }
-        free(data);
-        data = nullptr;
-        this->_size = 0;
-        this->_capacity = 0;
+        _size = 0;
+        _capacity = 0;
     }
 }
