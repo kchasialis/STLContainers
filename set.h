@@ -236,7 +236,6 @@ namespace adt {
         using const_iterator = set_iterator;
         using const_r_iterator = set_r_iterator;
 
-
         SetNode *_root;
         SetNode *_end_node;
         Less _less;
@@ -482,7 +481,7 @@ namespace adt {
     }
 
     template<typename T, class Less>
-    std::pair<typename set<T, Less>::const_iterator, bool> set<T, Less>::insert(value_type &&key) {
+    std::pair<typename set<T, Less>::const_iterator, bool> set<T, Less>::insert(key_type &&key) {
         bool added_new;
         SetNode *current = _bst_insert(added_new, std::forward<T>(key));
 

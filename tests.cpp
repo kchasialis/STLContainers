@@ -11,6 +11,7 @@
 #include "map.h"
 #include "set.h"
 #include "unordered_set.h"
+#include "unordered_map.h"
 
 struct emplace_test_t {
     int x;

@@ -85,7 +85,7 @@ namespace adt {
 
             map_iterator(MapNode* rhs = nullptr) : ptr(rhs) {}
             map_iterator(const map_iterator& rhs) : ptr(rhs.ptr) {}
-            
+
             map_iterator& operator=(const map_iterator& rhs) {
                 this->ptr = rhs.ptr;
                 return *this;
@@ -145,7 +145,7 @@ namespace adt {
 
             /*Inorder predecessor algorithm*/
             map_iterator& operator-- () {
-              
+
               if (this->ptr == nullptr) {
                 return map_iterator();
               }
@@ -177,7 +177,7 @@ namespace adt {
         public:
             map_r_iterator (MapNode* _ptr = nullptr) : map_iterator (_ptr) {}
             map_r_iterator (const map_r_iterator& other) = default;
-            
+
             map_r_iterator& operator= (const map_r_iterator& other) = default;
             map_r_iterator& operator= (MapNode* _ptr) {
                 this->ptr = _ptr;
@@ -217,7 +217,7 @@ namespace adt {
 
             /* Inorder successor algorithm.  */
             map_r_iterator& operator-- () {
-                
+
                 if (this->ptr == nullptr) {
                     return *this;
                 }
@@ -1017,7 +1017,7 @@ namespace adt {
 
         auto it = search(key);
         if (it == end()) {
-            throw std::out_of_range("Element is not present on map");
+            throw std::out_of_range("Key is not present on the map.");
         }
 
         return it->second;
@@ -1028,7 +1028,7 @@ namespace adt {
 
         auto it = search(key);
         if (it == end()) {
-            throw std::out_of_range("Element is not present on map");
+            throw std::out_of_range("Key is not present on the map.");
         }
 
         return it->second;

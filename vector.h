@@ -101,6 +101,9 @@ namespace adt {
         const_vector_iterator(const vector_iterator<T> &other) : _ptr(other._ptr) {}
 
         const_vector_iterator &operator=(const const_vector_iterator &other) {
+            if (this == &other) {
+                return *this;
+            }
             this->_ptr = other._ptr;
             return *this;
         }
