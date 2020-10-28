@@ -15,31 +15,31 @@ namespace adt {
         using iterator_category = std::forward_iterator_tag;
         using value_type = T;
         using difference_type = std::ptrdiff_t;
-        using pointer = value_type*;
-        using reference = value_type&;
-        using const_reference = const value_type&;
-        using const_pointer = const value_type*;
+        using pointer = const value_type*;
+        using reference = const value_type&;
 
     private:
         struct enabler {};
 
+    public:
         unordered_set_iterator(value_type **ptr = nullptr) : _ptr(ptr) {}
+
         /* Implicit conversion to const_iterator.  */
         template<class OtherT>
         unordered_set_iterator(const unordered_set_iterator<OtherT>& other,
-                               typename std::enable_if<std::is_convertible<OtherT**, T**>::value, enabler>::type = enabler())
-                : _ptr(other._ptr) {}
+                               typename std::enable_if<std::is_convertible<OtherT*, T*>::value, enabler>::type = enabler())
+                : _ptr(const_cast<value_type**>(other._ptr)) {}
 
-        unordered_set_iterator& operator=(const unordered_set_iterator& other) = default;
+        unordered_set_iterator& operator=(const unordered_set_iterator &other) = default;
         unordered_set_iterator& operator=(value_type **ptr) {
             this->_ptr = ptr;
             return *this;
         }
 
-        bool operator==(const unordered_set_iterator& other) const {
+        bool operator==(const unordered_set_iterator &other) const {
             return this->_ptr == other._ptr;
         }
-        bool operator!=(const unordered_set_iterator& other) const {
+        bool operator!=(const unordered_set_iterator &other) const {
             return !(*this == other);
         }
 
@@ -56,35 +56,37 @@ namespace adt {
             return temp;
         }
 
-        const_reference operator*() const {
+        reference operator*() const {
             return *(*(this->_ptr));
         }
-        const_pointer operator->() const {
+        pointer operator->() const {
             return *(this->_ptr);
         }
 
-    private:
+    public:
         value_type **_ptr;
 
-        template<typename K, class Hash = std::hash<T>, class Eq = std::equal_to<T>>
+        template<typename K, class Hash, class Eq>
         friend class unordered_set;
     };
 
 
     template<typename T, class Hash = std::hash<T>, class Eq = std::equal_to<T>>
     class unordered_set {
-    private:
+    public:
         using key_type = T;
         using value_type = T;
         using hasher = Hash;
         using key_equal = Eq;
         using size_type = size_t;
+        using pointer = value_type*;
+        using reference = value_type&;
         using const_reference = const value_type&;
-        using pointer = T*;
-        using const_pointer = const T*;
+        using const_pointer = const value_type*;
         using iterator = unordered_set_iterator<value_type>;
         using const_iterator = unordered_set_iterator<const value_type>;
 
+    private:
         pointer *_slots;
         ctrl_t *_ctrls;
         hasher _hasher;
@@ -92,6 +94,34 @@ namespace adt {
         size_type _capacity;
         size_type _first_elem_pos;
         key_equal _keq;
+
+        struct hash_info {
+            size_t pos;
+            uint64_t hash;
+            ctrl_t h2_hash;
+        };
+
+        struct find_insert_info {
+            std::pair<iterator, bool> find_info;
+            bool found_deleted;
+            size_t del_pos;
+            size_t empty_pos;
+        };
+
+        template<typename U>
+        struct _handle_return_overload {
+            typedef U tag_type;
+            value_type *ptr;
+
+            _handle_return_overload() : ptr(nullptr) {}
+            explicit _handle_return_overload(value_type *_ptr) : ptr(_ptr) {}
+        };
+
+        struct tag_ignore{};
+        struct tag_delete{};
+
+        typedef _handle_return_overload<tag_ignore> to_ignore;
+        typedef _handle_return_overload<tag_delete> to_delete;
 
     public:
         /* Constructors/Destructors.  */
@@ -107,25 +137,26 @@ namespace adt {
         size_type size() const noexcept;
 
         /* Iterators.  */
-        const_iterator begin() const noexcept;
-        const_iterator end() const noexcept;
+        iterator begin() const noexcept;
+        iterator end() const noexcept;
 
         /* Observers.  */
         hasher hash_function() const;
         key_equal key_eq() const;
 
         /* Modifiers.  */
-        std::pair<const_iterator, bool> insert(const value_type& val);
-        std::pair<const_iterator, bool> insert(value_type&& val);
+        std::pair<iterator, bool> insert(const value_type& val);
+        std::pair<iterator, bool> insert(value_type&& val);
         template <class... Args>
-        std::pair<const_iterator, bool> emplace(Args&&... args);
-        const_iterator erase(const_iterator pos);
+        std::pair<iterator, bool> emplace(Args&&... args);
+        iterator erase(const_iterator pos);
         size_type erase(const value_type& val);
         void clear() noexcept;
         void swap(unordered_set& other);
 
         /* Element lookup.  */
-        const_iterator find(const key_type& key) const;
+        iterator find(const key_type &key);
+        const_iterator find(const key_type &key) const;
 
         friend void swap(unordered_set& lhs, unordered_set& rhs) {
             using std::swap;
@@ -141,7 +172,14 @@ namespace adt {
 
     private:
         void _rehash();
-        std::pair<const_iterator, bool> _insert_unique(const_pointer val, bool copy_element);
+        hash_info _get_hash_info(const key_type& key);
+        find_insert_info _find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash);
+        std::pair<iterator, bool> _handle_elem_found(const std::pair<iterator, bool>& retval, to_ignore obj);
+        std::pair<iterator, bool> _handle_elem_found(const std::pair<iterator, bool>& retval, to_delete obj);
+        void _check_load_factor(uint64_t hash, size_type& pos);
+        pointer _construct_new_element(const_reference val);
+        pointer _construct_new_element(pointer val);
+        pointer _construct_new_element(value_type &&val);
         std::pair<size_type, size_type> _erase(pointer *_ptr);
     };
 
@@ -224,13 +262,13 @@ namespace adt {
     }
 
     template<typename T, class Hash, class Eq>
-    uset::const_iterator unordered_set<T, Hash, Eq>::begin() const noexcept {
-        return unordered_set::const_iterator(&_slots[_first_elem_pos]);
+    uset::iterator unordered_set<T, Hash, Eq>::begin() const noexcept {
+        return iterator(&_slots[_first_elem_pos]);
     }
 
     template<typename T, class Hash, class Eq>
-    uset::const_iterator unordered_set<T, Hash, Eq>::end() const noexcept {
-        return unordered_set::const_iterator(&_slots[_capacity]);
+    uset::iterator unordered_set<T, Hash, Eq>::end() const noexcept {
+        return iterator(&_slots[_capacity]);
     }
 
     template<typename T, class Hash, class Eq>
@@ -244,30 +282,30 @@ namespace adt {
     }
 
     template<typename T, class Hash, class Eq>
-    std::pair<uset::const_iterator, bool> unordered_set<T, Hash, Eq>::insert(const value_type& val) {
-        return _insert_unique(&val, true);
+    std::pair<uset::iterator, bool> unordered_set<T, Hash, Eq>::insert(const value_type &val) {
+        _hash_insert_unique(val, val, to_ignore());
     }
 
     template<typename T, class Hash, class Eq>
-    std::pair<uset::const_iterator, bool> unordered_set<T, Hash, Eq>::insert(value_type&& val) {
-        return insert(std::move(val));
+    std::pair<uset::iterator, bool> unordered_set<T, Hash, Eq>::insert(value_type &&val) {
+        _hash_insert_unique(val, std::forward<value_type>(val), to_ignore());
     }
 
     template<typename T, class Hash, class Eq>
     template<class... Args>
-    std::pair<uset::const_iterator, bool> unordered_set<T, Hash, Eq>::emplace(Args &&... args) {
+    std::pair<uset::iterator, bool> unordered_set<T, Hash, Eq>::emplace(Args &&... args) {
         value_type *val = new value_type(std::forward<Args>(args)...);
-        return _insert_unique(val, false);
+        _hash_insert_unique(*val, val, to_delete(val));
     }
 
     template<typename T, class Hash, class Eq>
-    uset::const_iterator unordered_set<T, Hash, Eq>::erase(const_iterator pos) {
-        return const_iterator(&(_slots[_erase(pos._ptr).first]));
+    uset::iterator unordered_set<T, Hash, Eq>::erase(const_iterator pos) {
+        return iterator(&(_slots[_erase(const_cast<pointer*>(pos._ptr)).first]));
     }
 
     template<typename T, class Hash, class Eq>
-    uset::size_type unordered_set<T, Hash, Eq>::erase(const value_type &val) {
-        return _erase(find(val)._ptr).second;
+    uset::size_type unordered_set<T, Hash, Eq>::erase(const key_type &key) {
+        return _erase(find(key)._ptr).second;
     }
 
     template<typename T, class Hash, class Eq>
@@ -277,6 +315,7 @@ namespace adt {
                 delete _slots[i];
                 _slots[i] = nullptr;
             }
+            _ctrls[i] = ctrl_empty;
         }
         _size = 0;
         _capacity = 16;
@@ -289,31 +328,32 @@ namespace adt {
     }
 
     template<typename T, class Hash, class Eq>
-    uset::const_iterator unordered_set<T, Hash, Eq>::find(const key_type &key) const {
-        uint64_t hash, h1_hash;
+    uset::iterator unordered_set<T, Hash, Eq>::find(const key_type &key) {
         size_t pos;
-        ctrl_t h2_hash;
 
         if (empty()) {
             return end();
         }
 
-        hash = _hasher(key);
-        h1_hash = h1(hash, _ctrls);
-        h2_hash = h2(hash);
-        pos = mod(h1_hash, _capacity);
+        auto info = _get_hash_info(key);
+        pos = info.pos;
 
         while (1) {
             if (is_empty_slot(_ctrls[pos])) {
                 return end();
             }
-            if (is_full_slot(_ctrls[pos]) && _ctrls[pos] == h2_hash) {
+            if (is_full_slot(_ctrls[pos]) && _ctrls[pos] == info.h2_hash) {
                 if (_keq(*_slots[pos], key)) {
                     return iterator(&_slots[pos]);
                 }
             }
             pos = mod(pos + 1, _capacity);
         }
+    }
+
+    template<typename T, class Hash, class Eq>
+    uset::const_iterator unordered_set<T, Hash, Eq>::find(const key_type &key) const {
+        return const_cast<unordered_set<T, Hash, Eq>*>(this)->find(key);
     }
 
     /* Private member functions.  */
@@ -367,18 +407,23 @@ namespace adt {
     }
 
     template<typename T, class Hash, class Eq>
-    std::pair<uset::const_iterator, bool> unordered_set<T, Hash, Eq>::_insert_unique(const unordered_set::const_pointer val, bool copy_element) {
-        uint64_t hash, h1_hash;
-        size_t del_pos, empty_pos, pos;
+    uset::hash_info unordered_set<T, Hash, Eq>::_get_hash_info(const key_type &key) {
+        uint64_t hash;
+        size_t h1_hash, pos;
         ctrl_t h2_hash;
-        double load_factor;
-        bool found_deleted;
 
-        /* Keys are unique, try and find it first.  */
-        hash = _hasher(val);
+        hash = _hasher(key);
         h1_hash = h1(hash, _ctrls);
         h2_hash = h2(hash);
         pos = mod(h1_hash, _capacity);
+
+        return {pos, hash, h2_hash};
+    }
+
+    template<typename T, class Hash, class Eq>
+    uset::find_insert_info unordered_set<T, Hash, Eq>::_find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash) {
+        bool found_deleted;
+        size_t empty_pos, del_pos;
 
         found_deleted = false;
         while (1) {
@@ -389,52 +434,54 @@ namespace adt {
                 found_deleted = true;
                 del_pos = pos;
             } else if (_ctrls[pos] == h2_hash) {
-                if (_keq(*_slots[pos], val)) {
-                    if (!copy_element) {
-                        /* If we constructed this element in emplace(), we have to delete it.  */
-                        delete val;
-                    }
-                    return {iterator(&_slots[pos]), false};
+                if (_keq((*_slots[pos]), key)) {
+                    return {{iterator(&_slots[pos]), false}, found_deleted, del_pos, empty_pos};
                 }
             }
             pos = mod(pos + 1, _capacity);
         }
 
-        pos = found_deleted ? del_pos : empty_pos;
-        load_factor = (double) _size / (double) _capacity;
+        return {{iterator(), true}, found_deleted, del_pos, empty_pos};
+    }
 
+    template<typename T, class Hash, class Eq>
+    std::pair<uset::iterator, bool> unordered_set<T, Hash, Eq>::_handle_elem_found(const std::pair<iterator, bool> &retval, to_ignore obj) {
+        return retval;
+    }
+
+    template<typename T, class Hash, class Eq>
+    std::pair<uset::iterator, bool> unordered_set<T, Hash, Eq>::_handle_elem_found(const std::pair<iterator, bool> &retval, to_delete obj) {
+        delete obj.ptr;
+        return retval;
+    }
+
+    template<typename T, class Hash, class Eq>
+    void unordered_set<T, Hash, Eq>::_check_load_factor(uint64_t hash, size_type &pos) {
+        double load_factor = (double) _size / (double) _capacity;
         if (load_factor >= 0.75) {
             _rehash();
-            h1_hash = h1(hash, _ctrls);
-            pos = mod(h1_hash, _capacity);
-        }
-
-        while (1) {
-            if (is_empty_or_deleted(_ctrls[pos])) {
-                _ctrls[pos] = h2_hash;
-                if (copy_element) {
-                    _slots[pos] = new value_type;
-                    *(_slots[pos]) = *val;
-                }
-                else {
-                    _slots[pos] = val;
-                }
-                _size++;
-
-                // Update first element position
-                if (pos < _first_elem_pos) {
-                    _first_elem_pos = pos;
-                }
-
-                return {iterator(&_slots[pos]), true};
-            }
-            pos = mod(pos + 1, _capacity);
+            pos = mod(h1(hash, _ctrls), _capacity);
         }
     }
 
     template<typename T, class Hash, class Eq>
-    std::pair<uset::size_type, uset::size_type> unordered_set<T, Hash, Eq>::_erase(pointer* _ptr) {
-        size_type pos;
+    uset::pointer unordered_set<T, Hash, Eq>::_construct_new_element(const_reference val) {
+        return new value_type(val);
+    }
+
+    template<typename T, class Hash, class Eq>
+    uset::pointer unordered_set<T, Hash, Eq>::_construct_new_element(pointer val) {
+        return val;
+    }
+
+    template<typename T, class Hash, class Eq>
+    uset::pointer unordered_set<T, Hash, Eq>::_construct_new_element(value_type &&val) {
+        return new value_type(std::forward<value_type>(val));
+    }
+
+    template<typename T, class Hash, class Eq>
+    std::pair<uset::size_type, uset::size_type> unordered_set<T, Hash, Eq>::_erase(pointer *_ptr) {
+        size_type pos, prev_pos;
         key_type *to_delete;
 
         if (_ptr != &_slots[_capacity]) {
@@ -445,15 +492,21 @@ namespace adt {
             _slots[pos] = nullptr;
             _size--;
 
-            if (pos == _first_elem_pos) {
-                while (_slots[_first_elem_pos] == nullptr && _first_elem_pos != _capacity) {
-                    _first_elem_pos++;
-                }
+            prev_pos = pos;
+            /* Find next non-null entry.  */
+            while (_slots[pos] == nullptr && pos != _capacity) {
+                pos++;
             }
+
+            /* If the deleted entry was the first element in our container, update.  */
+            if (prev_pos == _first_elem_pos) {
+                _first_elem_pos = pos;
+            }
+
 
             delete to_delete;
 
-            return {pos + 1, 1};
+            return {pos, 1};
         }
 
         return {_capacity, 0};

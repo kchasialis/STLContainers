@@ -5,8 +5,40 @@
 
 namespace adt {
 
+    #define _hash_insert_unique(key, val, handler)                           \
+        do {                                                                 \
+            size_t pos;                                                      \
+            /* Hash the value and return information.  */                    \
+            auto info = _get_hash_info(key);                                 \
+                                                                             \
+            /* Keys are unique, try and find it first.  */                   \
+            auto p = _find_or_prepare_insert(key, info.pos, info.h2_hash);   \
+            /* If we found it, return early.  */                             \
+            if (!p.find_info.second) {                                       \
+                return _handle_elem_found(p.find_info, handler);             \
+            }                                                                \
+            pos = p.found_deleted ? p.del_pos : p.empty_pos;                 \
+                                                                             \
+            _check_load_factor(info.hash, pos);                              \
+                                                                             \
+            while (1) {                                                      \
+                if (is_empty_or_deleted(_ctrls[pos])) {                      \
+                    _ctrls[pos] = info.h2_hash;                              \
+                    _slots[pos] = _construct_new_element(val);               \
+                    _size++;                                                 \
+                                                                             \
+                    /* Update first element position.  */                    \
+                    if (pos < _first_elem_pos) {                             \
+                        _first_elem_pos = pos;                               \
+                    }                                                        \
+                                                                             \
+                    return {iterator(&_slots[pos]), true};                   \
+                }                                                            \
+                pos = mod(pos + 1, _capacity);                               \
+            }                                                                \
+        } while(0)
+
     using ctrl_t = int8_t;
-    using h2_t = uint8_t;
 
     enum ctrl_val : ctrl_t {
         ctrl_empty = -1,

@@ -402,19 +402,124 @@ void run_unordered_set_test() {
     assert(test_set_1.begin()->str == "Kostas");
 }
 
+void run_unordered_multiset_test() {
+}
+
 void run_unordered_map_test() {
-    
+    adt::unordered_map<int, std::string> map_test;
+    size_t sum, test_sum, index;
+
+    /* insert() test.  */
+    sum = 0;
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        auto p = map_test.insert({i, "kostas" + std::to_string(i)});
+        assert(p.second);
+        assert(p.first->first == i);
+        assert(p.first->second == "kostas" + std::to_string(i));
+        sum += i;
+    }
+
+    /* iterators test.  */
+    test_sum = 0;
+    for (auto it = map_test.cbegin() ; it != map_test.cend() ; it++) {
+        test_sum += it->first;
+    }
+    assert(sum == test_sum);
+
+    /* operator[] test.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        assert(map_test[i] == "kostas" + std::to_string(i));
+    }
+
+    /* at() test.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        assert(map_test.at(i) == "kostas" + std::to_string(i));
+    }
+
+    try {
+        map_test.at(1232132);
+        assert(0);
+    } catch (const std::out_of_range& out_of_range) {}
+
+    /* find() test.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        assert(map_test.find(i)->second == "kostas" + std::to_string(i));
+    }
+
+    /* this should not compile, keys are read-only.
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        assert(map_test.find(i)->first = i + 1);
+    } */
+
+    /* this should compile fine.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        map_test.find(i)->second = "kostas" + std::to_string(i);
+    }
+
+    /* clear() test.  */
+    map_test.clear();
+    assert(map_test.begin() == map_test.end());
+    assert(map_test.cbegin() == map_test.cend());
+    assert(map_test.empty());
+
+    /* emplace() test.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        std::string str("kostas" + std::to_string(i));
+        auto p = map_test.emplace(i, str);
+        assert(p.second);
+        assert(p.first->first == i);
+        assert(p.first->second == "kostas" + std::to_string(i));
+    }
+
+    /* erase() test.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        assert(map_test.erase(i) == 1);
+    }
+
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        auto p = map_test.insert(std::make_pair<int, std::string>(i, "kostas" + std::to_string(i)));
+        assert(p.second);
+        assert(p.first->first == i);
+        assert(p.first->second == "kostas" + std::to_string(i));
+    }
+
+    index = 0;
+    for (auto it = map_test.begin() ; it != map_test.end() ; index++) {
+        /* this also asserts that we can convert iterator to const_iterator.  */
+        it = map_test.erase(it);
+    }
+
+    /* This should not compile, and it doesnt.
+    for (auto it = map_test.cbegin() ; it != map_test.cend() ; it++) {
+        it->first = 15;
+        it->second = "asd";
+    } */
+
+    /* check if we are able to change the mapped values.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        map_test[i] = "0";
+    }
+
+    for (auto it = map_test.begin() ; it != map_test.end() ; it++, index++) {
+        assert(it->second == "0");
+    }
+}
+
+void run_unordered_multimap_test() {
+
 }
 
 int main() {
-    run_list_test();
-    run_vector_test();
-    run_set_test();
-    run_multiset_test();
-    run_map_test();
-    run_multimap_test();
+//    run_list_test();
+//    run_vector_test();
+//    run_set_test();
+//    run_multiset_test();
+//    run_map_test();
+//    run_multimap_test();
     run_unordered_set_test();
     run_unordered_map_test();
+//    run_unordered_multimap_test();
+//    run_unordered_multiset_test();
 
     return 0;    
 }
