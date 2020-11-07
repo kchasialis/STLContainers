@@ -4,86 +4,11 @@
 #include <cassert>
 #include <functional>
 
-#include "hash_utilities.h"
+#include "hash_internal.h"
 
 #define umap typename unordered_map<K, V, Hash, Eq>
 
-/* TODO:
- * Change all other STLContainers based on umap and uset.
- * Implemenent umultimap & umultiset.
- * Maybe implement some more functions like try_emplace() etc. */
-
 namespace adt {
-
-    template<typename T>
-    class unordered_map_iterator {
-    public:
-        using iterator_category = std::forward_iterator_tag;
-        using value_type = T;
-        using difference_type = std::ptrdiff_t;
-        using pointer = value_type*;
-        using reference = value_type&;
-        using const_reference = const value_type&;
-        using const_pointer = const value_type*;
-
-    private:
-        struct enabler {};
-
-    public:
-        unordered_map_iterator(value_type **ptr = nullptr) : _ptr(ptr) {}
-
-        /* Implicit conversion to const_iterator.  */
-        template<class OtherT>
-        unordered_map_iterator(const unordered_map_iterator<OtherT>& other,
-                               typename std::enable_if<std::is_convertible<OtherT*, T*>::value, enabler>::type = enabler())
-                               : _ptr(const_cast<value_type**>(other._ptr)) {}
-
-        unordered_map_iterator& operator=(const unordered_map_iterator& other) = default;
-        unordered_map_iterator& operator=(const value_type **ptr) {
-            this->_ptr = ptr;
-            return *this;
-        }
-
-        bool operator==(const unordered_map_iterator& other) const {
-            return this->_ptr == other._ptr;
-        }
-        bool operator!=(const unordered_map_iterator& other) const {
-            return !(*this == other);
-        }
-
-        unordered_map_iterator& operator++() {
-            ++_ptr;
-            while (*_ptr == nullptr && *_ptr != (pointer) 0x1) {
-                ++_ptr;
-            }
-            return *this;
-        }
-        unordered_map_iterator operator++(int) & {
-            auto temp(*this);
-            ++(*this);
-            return temp;
-        }
-
-        const_reference operator*() const {
-            return *(*this->_ptr);
-        }
-        const_pointer operator->() const {
-            return *(this->_ptr);
-        }
-
-        reference operator*() {
-            return *(*(this->_ptr));
-        }
-        pointer operator->() {
-            return *(this->_ptr);
-        }
-
-    public:
-        value_type **_ptr;
-
-        template<typename K, typename V, typename Hash, typename Eq>
-        friend class unordered_map;
-    };
 
     template<typename K, typename V, typename Hash = std::hash<K>, typename Eq = std::equal_to<K>>
     class unordered_map {
@@ -93,16 +18,19 @@ namespace adt {
         using value_type = std::pair<const K, V>;
         using hasher = Hash;
         using key_equal = Eq;
-        using reference = value_type&;
-        using const_reference = const value_type&;
-        using pointer = value_type*;
-        using const_pointer = const value_type*;
+        using reference = value_type &;
+        using const_reference = const value_type &;
+        using pointer = value_type *;
+        using const_pointer = const value_type *;
         using size_type = size_t;
-        using iterator = unordered_map_iterator<value_type>;
-        using const_iterator = unordered_map_iterator<const value_type>;
+        using difference_type = std::ptrdiff_t;
+        class iterator;
+        class const_iterator;
 
     private:
-        pointer *_slots;
+        using internal_ptr = value_type *;
+
+        internal_ptr *_slots;
         ctrl_t *_ctrls;
         hasher _hasher;
         size_type _size;
@@ -119,27 +47,141 @@ namespace adt {
         };
 
         struct find_insert_info {
-            std::pair<iterator, bool> find_info;
+            iterator it;
             bool found_deleted;
             size_t del_pos;
             size_t empty_pos;
         };
 
         template<typename U>
-        struct _handle_return_overload {
+        struct handle_return_overload {
             typedef U tag_type;
-            value_type *ptr;
+            internal_ptr ptr;
 
-            _handle_return_overload(value_type *_ptr = nullptr) : ptr(_ptr) {}
+            handle_return_overload(value_type *_ptr = nullptr) : ptr(_ptr) {}
         };
 
         struct tag_ignore{};
         struct tag_delete{};
 
-        typedef _handle_return_overload<tag_ignore> to_ignore;
-        typedef _handle_return_overload<tag_delete> to_delete;
+        typedef handle_return_overload<tag_ignore> to_ignore;
+        typedef handle_return_overload<tag_delete> to_delete;
 
     public:
+        class iterator {
+            friend class unordered_map;
+
+            template<class Container, typename R, typename Key, typename Value, typename... Args>
+            friend R _hash_insert(Container *cnt, const Key &key, Value val, Args &&... args);
+
+            template<class Container>
+            friend container::iterator _hash_find(Container *cnt, const container::key_type &key);
+
+            template<class Container, typename Key, typename Value>
+            friend container::mapped_type &_hash_map_index_operator(Container *cnt, const Key &key, Value val);
+
+            template<class Container>
+            friend container::find_insert_info _hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash);
+
+            using internal_ptr = unordered_map::internal_ptr;
+
+        public:
+            using iterator_category = std::forward_iterator_tag;
+            using value_type = unordered_map::value_type;
+            using reference = unordered_map::reference;
+            using const_reference = unordered_map::const_reference;
+            using pointer = unordered_map::pointer;
+            using const_pointer = unordered_map::const_pointer;
+            using difference_type = unordered_map::difference_type;
+
+            iterator(const iterator &other) = default;
+            iterator(iterator &&other) = default;
+
+            iterator &operator=(const iterator &other) = default;
+            iterator &operator=(internal_ptr *ptr) {
+                this->_ptr = ptr;
+                return *this;
+            }
+
+            bool operator==(const iterator &other) const { return this->_ptr == other._ptr; }
+            bool operator==(internal_ptr *ptr) const { return this->_ptr == ptr; }
+            bool operator!=(const iterator &other) const { return !(*this == other); }
+            bool operator!=(internal_ptr *ptr) const { return !(*this == ptr); }
+
+            iterator &operator++() {
+                /* If its already end(), dont try to increment it.  */
+                if (_ptr == nullptr || *_ptr == (pointer) 0x1) return *this;
+
+                ++_ptr;
+                while (*_ptr == nullptr && *_ptr != (pointer) 0x1) ++_ptr;
+
+                return *this;
+            }
+            iterator operator++(int) & {
+                auto temp(*this);
+                ++(*this);
+                return temp;
+            }
+
+            const_reference operator*() const { return *(*this->_ptr); }
+            reference operator*() { return *(*(this->_ptr));
+            }
+            pointer operator->() {
+                return *(this->_ptr);
+            }
+            const_pointer operator->() const {
+                return *(this->_ptr);
+            }
+
+        private:
+            internal_ptr *_ptr;
+
+            iterator(internal_ptr *ptr = nullptr) : _ptr(ptr) {}
+        };
+
+        class const_iterator {
+            friend class unordered_map;
+            using internal_ptr = unordered_map::internal_ptr;
+
+        public:
+            using iterator_category = std::forward_iterator_tag;
+            using value_type = unordered_map::value_type;
+            using reference = unordered_map::const_reference;
+            using const_reference = unordered_map::const_reference;
+            using pointer = unordered_map::const_pointer;
+            using difference_type = unordered_map::difference_type;
+
+            /* Implicit conversion from iterator.  */
+            const_iterator(iterator it) : _it(std::move(it)) {}
+
+            bool operator==(const const_iterator &other) const {
+                return this->_it == other._it;
+            }
+            bool operator==(internal_ptr *ptr) const {
+                return _it == ptr;
+            }
+            bool operator!=(const const_iterator &other) const {
+                return !(*this == other);
+            }
+            bool operator!=(internal_ptr *ptr) const {
+                return !(*this == ptr);
+            }
+
+            reference operator*() const { return *_it; }
+            pointer operator->() const { return _it.operator->(); }
+
+            const_iterator &operator++() {
+                ++_it;
+                return *this;
+            }
+            const_iterator operator++(int) { return _it++; }
+
+        private:
+            iterator _it;
+
+            const_iterator(internal_ptr *ptr) : _it(ptr) {}
+        };
+
         /* Constructors/Destructors.  */
         explicit unordered_map(size_type cap = 16, const hasher& hash = hasher(),
                                const key_equal& keq = key_equal()) noexcept;
@@ -174,10 +216,10 @@ namespace adt {
         void swap(unordered_map &other);
 
         /* Element lookup.  */
-        mapped_type& operator[](const key_type &key);
-        mapped_type& operator[](key_type &&k);
-        mapped_type& at(const key_type &key) noexcept(false);
-        const mapped_type& at(const key_type &key) const noexcept(false);
+        mapped_type &operator[](const key_type &key);
+        mapped_type &operator[](key_type &&k);
+        mapped_type &at(const key_type &key) noexcept(false);
+        const mapped_type &at(const key_type &key) const noexcept(false);
         iterator find(const key_type &key);
         const_iterator find(const key_type &key) const;
 
@@ -194,53 +236,60 @@ namespace adt {
             swap(lhs._keq, rhs._keq);
         }
 
+        template<class Container>
+        friend void _hash_construct(Container *cnt);
+
+        template<class Container>
+        friend void _hash_destruct(Container *cnt);
+
+        template<class Container>
+        friend void _hash_clear(Container *cnt);
+
+        template<class Container>
+        friend void _hash_rehash(Container *cnt);
+
+        template<class Container>
+        friend container::find_insert_info _hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash);
+
+        template<class Container>
+        friend container::hash_info _hash_get_hash_info(Container *cnt, const container::key_type &key);
+
+        template<class Container>
+        friend void _hash_check_load_factor(Container *cnt, container::size_type n_slots, uint64_t hash, container::size_type &pos);
+
+        template<class Container, typename R, typename Key, typename Value, typename... Args>
+        friend R _hash_insert(Container *cnt, const Key &key, Value val, Args &&... args);
+
+        template<class Container, typename Key, typename Value>
+        friend container::mapped_type &_hash_map_index_operator(Container *cnt, const Key &key, Value val);
+
+        template<class Container>
+        friend std::pair<container::size_type, container::size_type> _hash_erase(Container *cnt, container::internal_ptr *ptr, bool erase_all);
+
+        template<class Container>
+        friend container::iterator _hash_find(Container *cnt, const container::key_type &key);
+
     private:
         void _rehash();
-        hash_info _get_hash_info(const key_type& key);
-        find_insert_info _find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash);
-        std::pair<iterator, bool> _handle_elem_found(const std::pair<iterator, bool>& retval, to_ignore obj);
-        std::pair<iterator, bool> _handle_elem_found(const std::pair<iterator, bool>& retval, to_delete obj);
         void _check_load_factor(uint64_t hash, size_type& pos);
-        pointer _construct_new_element(const_reference val);
-        pointer _construct_new_element(pointer val);
-        template<class P>
-        pointer _construct_new_element(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type = enabler());
-        pointer _construct_new_element(const key_type &key);
-        pointer _construct_new_element(key_type &&key);
-        std::pair<size_type, size_type> _erase(pointer *_ptr);
+        hash_info _get_hash_info(const key_type &key);
+        const key_type &_get_slot_key(internal_ptr slot);
+        
+        find_insert_info _find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash);
+        std::pair<iterator, bool> _handle_elem_found(const iterator &it, to_ignore obj);
+        std::pair<iterator, bool> _handle_elem_found(const iterator &it, to_delete obj);
+        std::pair<iterator, bool> _handle_elem_not_found(const iterator &it);
 
-        #define _umap_insert_unique_operator(key, val)                           \
-            do {                                                                 \
-                size_t pos;                                                      \
-                /* Hash the value and return information.  */                    \
-                auto info = _get_hash_info(key);                                 \
-                                                                                 \
-                /* Keys are unique, try and find it first.  */                   \
-                auto p = _find_or_prepare_insert(key, info.pos, info.h2_hash);   \
-                /* If we found it, return early.  */                             \
-                if (!p.find_info.second) {                                       \
-                    return p.find_info.first->second;                            \
-                }                                                                \
-                pos = p.found_deleted ? p.del_pos : p.empty_pos;                 \
-                                                                                 \
-                _check_load_factor(info.hash, pos);                              \
-                                                                                 \
-                while (1) {                                                      \
-                    if (is_empty_or_deleted(_ctrls[pos])) {                      \
-                        _ctrls[pos] = info.h2_hash;                              \
-                        _slots[pos] = _construct_new_element(val);               \
-                        _size++;                                                 \
-                                                                                 \
-                        /* Update first element position.  */                    \
-                        if (pos < _first_elem_pos) {                             \
-                            _first_elem_pos = pos;                               \
-                        }                                                        \
-                                                                                 \
-                        return iterator(&_slots[pos])->second;                   \
-                    }                                                            \
-                    pos = mod(pos + 1, _capacity);                               \
-                }                                                                \
-            } while(0)
+        internal_ptr _construct_new_element(const_reference val);
+        template<class P>
+        internal_ptr _construct_new_element(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type = enabler());
+        internal_ptr _construct_new_element(internal_ptr val);
+        internal_ptr _construct_new_element(const key_type &key);
+        internal_ptr _construct_new_element(key_type &&key);
+        
+        size_type _delete_all_slots(size_type pos);
+        size_type _delete_slot(size_type pos);
+        std::pair<size_type, size_type> _erase(internal_ptr *ptr, bool erase_all = false);
     };
 
     /* Implementation.  */
@@ -249,20 +298,8 @@ namespace adt {
     template<typename K, typename V, typename Hash, typename Eq>
     unordered_map<K, V, Hash, Eq>::unordered_map(unordered_map::size_type cap, const hasher &hash,
                                                  const key_equal& keq) noexcept
-                                                 : _size(0), _capacity(cap), _hasher(hash), _keq(keq) {
-        _capacity = normalize_capacity(_capacity);
-
-        assert(is_valid_capacity(_capacity) && "capacity should always be a power of 2");
-
-        _first_elem_pos = _capacity;
-        _ctrls = new ctrl_t[_capacity];
-        /* Add one extra slot so we can determine when our hash table ends.  */
-        _slots = (pointer *) calloc (sizeof (value_type *), _capacity + 1);
-        _slots[_capacity] = (pointer) 0x1;
-
-        for (size_t i = 0 ; i < _capacity ; i++) {
-            _ctrls[i] = ctrl_empty;
-        }
+        : _size(0), _capacity(cap), _hasher(hash), _keq(keq) {
+       _hash_construct<>(this);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
@@ -270,8 +307,8 @@ namespace adt {
         this->_capacity = other._capacity;
         this->_size = other._size;
         this->_first_elem_pos = other._first_elem_pos;
-        this->_slots = (pointer *) calloc(sizeof (value_type *), this->_capacity + 1);
-        this->_slots[this->_capacity] = (pointer) 0x1;
+        this->_slots = (internal_ptr *) calloc(sizeof (internal_ptr), this->_capacity + 1);
+        this->_slots[this->_capacity] = (internal_ptr) 0x1;
         this->_ctrls = new ctrl_t[this->_capacity];
 
         /* Deep copy of the data. Avoid this lol.  */
@@ -289,25 +326,16 @@ namespace adt {
         swap(*this, other);
     }
 
+    template<typename K, typename V, typename Hash, typename Eq>
+    unordered_map<K, V, Hash, Eq>::~unordered_map() noexcept {
+        _hash_destruct<>(this);
+    }
 
     template<typename K, typename V, typename Hash, typename Eq>
     unordered_map<K, V, Hash, Eq> &unordered_map<K, V, Hash, Eq>::operator=(unordered_map rhs) {
         /* Copy and swap idiom, let the compiler handle the copy of the argument.  */
         swap(*this, rhs);
         return *this;
-    }
-
-    template<typename K, typename V, typename Hash, typename Eq>
-    unordered_map<K, V, Hash, Eq>::~unordered_map() noexcept {
-        clear();
-
-        if (_ctrls && _slots) {
-            delete[] _ctrls;
-            free(_slots);
-
-            _slots = nullptr;
-            _ctrls = nullptr;
-        }
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
@@ -352,45 +380,36 @@ namespace adt {
 
     template<typename K, typename V, typename Hash, typename Eq>
     std::pair<umap::iterator, bool> unordered_map<K, V, Hash, Eq>::insert(const_reference val) {
-        _hash_insert_unique(val.first, val, to_ignore());
+        return _hash_insert<unordered_map<K, V, Hash, Eq>, std::pair<iterator, bool>, key_type, const_reference>(this, val.first, val, to_ignore());
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
     template<class P>
     std::pair<umap::iterator, bool> unordered_map<K, V, Hash, Eq>::insert(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type) {
-        _hash_insert_unique(val.first, std::forward<P>(val), to_ignore());
+        return _hash_insert<unordered_map<K, V, Hash, Eq>, std::pair<iterator, bool>, key_type, P&&>(this, val.first, std::forward<P>(val), to_ignore());
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
     template<class... Args>
     std::pair<umap::iterator, bool> unordered_map<K, V, Hash, Eq>::emplace(Args &&... args) {
         auto *val = new value_type(std::forward<Args>(args)...);
-        _hash_insert_unique(val->first, val, to_delete(val));
+        
+        return _hash_insert<unordered_map<K, V, Hash, Eq>, std::pair<iterator, bool>, key_type, value_type*>(this, val->first, val, to_delete(val));
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
     umap::unordered_map::iterator unordered_map<K, V, Hash, Eq>::erase(const_iterator pos) {
-        return iterator(&(_slots[_erase(const_cast<pointer*>(pos._ptr)).first]));
+        return iterator(&(_slots[_erase(pos._it._ptr).first]));
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
     umap::unordered_map::size_type unordered_map<K, V, Hash, Eq>::erase(const key_type &key) {
-        return _erase(const_cast<pointer*>(find(key)._ptr)).second;
+        return _erase(find(key)._ptr).second;
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
     void unordered_map<K, V, Hash, Eq>::clear() noexcept {
-        for (size_t i = 0 ; i < _capacity ; i++) {
-            if (_slots[i] != nullptr) {
-                delete _slots[i];
-                _slots[i] = nullptr;
-            }
-            _ctrls[i] = ctrl_empty;
-        }
-
-        _size = 0;
-        _capacity = 16;
-        _first_elem_pos = _capacity;
+        _hash_clear<>(this);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
@@ -400,12 +419,12 @@ namespace adt {
 
     template<typename K, typename V, typename Hash, typename Eq>
     umap::mapped_type &unordered_map<K, V, Hash, Eq>::operator[](const key_type &key) {
-        _umap_insert_unique_operator(key, key);
+        return _hash_map_index_operator<unordered_map<K, V, Hash, Eq>, key_type, const key_type&>(this, key, key);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
     umap::mapped_type &unordered_map<K, V, Hash, Eq>::operator[](key_type &&key) {
-        _umap_insert_unique_operator(key, std::forward<key_type>(key));
+        return _hash_map_index_operator<unordered_map<K, V, Hash, Eq>, key_type, key_type&&>(this, key, std::forward<key_type>(key));
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
@@ -427,26 +446,7 @@ namespace adt {
 
     template<typename K, typename V, typename Hash, typename Eq>
     umap::iterator unordered_map<K, V, Hash, Eq>::find(const key_type &key) {
-        size_t pos;
-
-        if (empty()) {
-            return end();
-        }
-
-        auto h_info = _get_hash_info(key);
-        pos = h_info.pos;
-
-        while (1) {
-            if (is_empty_slot(_ctrls[pos])) {
-                return end();
-            }
-            if (is_full_slot(_ctrls[pos]) && _ctrls[pos] == h_info.h2_hash) {
-                if (_keq(_slots[pos]->first, key)) {
-                    return iterator(&_slots[pos]);
-                }
-            }
-            pos = mod(pos + 1, _capacity);
-        }
+        return _hash_find<>(this, key);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
@@ -457,165 +457,92 @@ namespace adt {
     /* Private member functions.  */
     template<typename K, typename V, typename Hash, typename Eq>
     void unordered_map<K, V, Hash, Eq>::_rehash() {
-        uint64_t hash, h1_hash;
-        size_t pos;
-        auto old_slots = _slots;
-        auto old_ctrls = _ctrls;
-        auto old_cap = _capacity;
-        auto new_cap = old_cap * 2;
-
-        assert (is_valid_capacity (_capacity) && "capacity should always be a power of 2");
-
-        _ctrls = new ctrl_t[new_cap];
-        _slots = (pointer *) calloc (sizeof (key_type *), new_cap + 1);
-        _slots[new_cap] = (pointer) 0x1;
-        _capacity = new_cap;
-        _first_elem_pos = new_cap;
-
-        for (size_t i = 0 ; i < new_cap ; i++) {
-            _ctrls[i] = ctrl_empty;
-        }
-
-        for (size_t i = 0 ; i < old_cap ; i++) {
-
-            if (is_full_slot(old_ctrls[i])) {
-                hash = _hasher(old_slots[i]->first);
-                h1_hash = h1(hash, _ctrls);
-                pos = mod(h1_hash, _capacity);
-
-                while (1) {
-                    if (is_empty_or_deleted(_ctrls[pos])) {
-                        _ctrls[pos] = h2(hash);
-                        _slots[pos] = old_slots[i];
-
-                        if (pos < _first_elem_pos) {
-                            _first_elem_pos = pos;
-                        }
-
-                        break;
-                    }
-                    pos = mod(pos + 1, _capacity);
-                }
-            }
-        }
-
-        delete[] old_ctrls;
-        free(old_slots);
+        _hash_rehash<>(this);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
     umap::hash_info unordered_map<K, V, Hash, Eq>::_get_hash_info(const key_type &key) {
-        uint64_t hash;
-        size_t h1_hash, pos;
-        ctrl_t h2_hash;
+        return _hash_get_hash_info<>(this, key);
+    }
 
-        hash = _hasher(key);
-        h1_hash = h1(hash, _ctrls);
-        h2_hash = h2(hash);
-        pos = mod(h1_hash, _capacity);
-
-        return {pos, hash, h2_hash};
+    template<typename K, typename V, typename Hash, typename Eq>
+    const umap::key_type& unordered_map<K, V, Hash, Eq>::_get_slot_key(internal_ptr slot) {
+        return slot->first;
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
     umap::find_insert_info unordered_map<K, V, Hash, Eq>::_find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash) {
-        bool found_deleted;
-        size_t empty_pos, del_pos;
-
-        found_deleted = false;
-        while (1) {
-            if (is_empty_slot(_ctrls[pos])) {
-                empty_pos = pos;
-                break;
-            } else if (is_deleted_slot(_ctrls[pos]) && !found_deleted) {
-                found_deleted = true;
-                del_pos = pos;
-            } else if (_ctrls[pos] == h2_hash) {
-                if (_keq((*_slots[pos]).first, key)) {
-                    return {{iterator(&_slots[pos]), false}, found_deleted, del_pos, empty_pos};
-                }
-            }
-            pos = mod(pos + 1, _capacity);
-        }
-
-        return {{iterator(), true}, found_deleted, del_pos, empty_pos};
+        return _hash_find_or_prepare_insert<>(this, key, pos, h2_hash);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    std::pair<umap::iterator, bool> unordered_map<K, V, Hash, Eq>::_handle_elem_found(const std::pair<iterator, bool> &retval, to_ignore obj) {
-        return retval;
+    std::pair<umap::iterator, bool> unordered_map<K, V, Hash, Eq>::_handle_elem_found(const iterator &it, to_ignore obj) {
+        return {it, false};
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    std::pair<umap::iterator, bool> unordered_map<K, V, Hash, Eq>::_handle_elem_found(const std::pair<iterator, bool> &retval, to_delete obj) {
+    std::pair<umap::iterator, bool> unordered_map<K, V, Hash, Eq>::_handle_elem_found(const iterator &it, to_delete obj) {
         delete obj.ptr;
-        return retval;
+        return {it, false};
+    }
+
+    template<typename K, typename V, typename Hash, typename Eq>
+    std::pair<umap::iterator, bool> unordered_map<K, V, Hash, Eq>::_handle_elem_not_found(const iterator &it) {
+        return {it, true};
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
     void unordered_map<K, V, Hash, Eq>::_check_load_factor(uint64_t hash, size_type& pos) {
-        double load_factor = (double) _size / (double) _capacity;
-        if (load_factor >= 0.75) {
-            _rehash();
-            pos = mod(h1(hash, _ctrls), _capacity);
-        }
+        _hash_check_load_factor<>(this, _size, hash, pos);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umap::pointer unordered_map<K, V, Hash, Eq>::_construct_new_element(const_reference val) {
+    umap::internal_ptr unordered_map<K, V, Hash, Eq>::_construct_new_element(const_reference val) {
         return new value_type(val);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umap::pointer unordered_map<K, V, Hash, Eq>::_construct_new_element(pointer val) {
-        return val;
-    }
-
-    template<typename K, typename V, typename Hash, typename Eq>
     template<class P>
-    umap::pointer unordered_map<K, V, Hash, Eq>::_construct_new_element(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type) {
+    umap::internal_ptr unordered_map<K, V, Hash, Eq>::_construct_new_element(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type) {
         return new value_type(std::forward<P>(val));
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umap::pointer unordered_map<K, V, Hash, Eq>::_construct_new_element(const key_type &key) {
+    umap::internal_ptr unordered_map<K, V, Hash, Eq>::_construct_new_element(internal_ptr val) {
+        return val;
+    }
+
+    template<typename K, typename V, typename Hash, typename Eq>
+    umap::internal_ptr unordered_map<K, V, Hash, Eq>::_construct_new_element(const key_type &key) {
         return new value_type(key, mapped_type());
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umap::pointer unordered_map<K, V, Hash, Eq>::_construct_new_element(key_type &&key) {
+    umap::internal_ptr unordered_map<K, V, Hash, Eq>::_construct_new_element(key_type &&key) {
         return new value_type(std::forward<key_type>(key), mapped_type());
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    std::pair<umap::size_type, umap::size_type> unordered_map<K, V, Hash, Eq>::_erase(pointer *_ptr) {
-        size_type pos, prev_pos;
-        value_type *to_delete;
+    umap::size_type unordered_map<K, V, Hash, Eq>::_delete_all_slots(size_type pos) {
+        /* Keys are unique.  */
+        delete _slots[pos];
+        _slots[pos] = nullptr;
+        --_size;
 
-        if (_ptr != &_slots[_capacity]) {
-            pos = _ptr - _slots;
+        return 1;
+    }
 
-            _ctrls[pos] = ctrl_deleted;
-            to_delete = _slots[pos];
-            _slots[pos] = nullptr;
-            _size--;
+    template<typename K, typename V, typename Hash, typename Eq>
+    umap::size_type unordered_map<K, V, Hash, Eq>::_delete_slot(size_type pos) {
+        delete _slots[pos];
+        _slots[pos] = nullptr;
+        --_size;
 
-            prev_pos = pos;
-            /* Find next non-null entry.  */
-            while (_slots[pos] == nullptr && pos != _capacity) {
-                pos++;
-            }
+        return 1;
+    }
 
-            /* If the deleted entry was the first element in our container, update.  */
-            if (prev_pos == _first_elem_pos) {
-                _first_elem_pos = pos;
-            }
-
-            delete to_delete;
-
-            return {pos, 1};
-        }
-
-        return {_capacity, 0};
+    template<typename K, typename V, typename Hash, typename Eq>
+    std::pair<umap::size_type, umap::size_type> unordered_map<K, V, Hash, Eq>::_erase(internal_ptr *ptr, bool erase_all) {
+        return _hash_erase<>(this, ptr, erase_all);
     }
 }

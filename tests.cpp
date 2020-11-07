@@ -1,39 +1,19 @@
 #include <algorithm>
-#include <iostream>
 #include <cassert>
-#include <vector>
+#include <iostream>
 #include <set>
+#include <vector>
 #include <string>
-#include <unordered_set>
 
 #include "list.h"
 #include "vector.h"
 #include "map.h"
 #include "set.h"
 #include "unordered_set.h"
+#include "unordered_multiset.h"
 #include "unordered_map.h"
+#include "unordered_multimap.h"
 
-struct emplace_test_t {
-    int x;
-    int y;
-    double z;
-    std::string str;
-
-    emplace_test_t(int _x = 0, int _y = 1, double _z = 0.0, std::string _str = "lee")
-                  : x(_x), y(_y), z(_z), str(std::move(_str)) {}
-};
-
-struct hash_functor {
-    size_t operator()(const emplace_test_t &key) const noexcept {
-        return std::hash<int>{}(key.x);
-    }
-};
-
-struct equal_functor {
-    bool operator()(const emplace_test_t &lhs, const emplace_test_t &rhs) {
-        return lhs.x == rhs.x;
-    }
-};
 
 void run_list_test() {
     int val;
@@ -344,7 +324,7 @@ void run_map_test() {
     for (auto it = mymap.rbegin() ; it != mymap.rend() ; it++) {
         sorted_test.push_back (it->first);
     }
-    assert (std::is_sorted (sorted_test.begin(), sorted_test.end(), reverse_order));
+    assert (std::is_sorted(sorted_test.begin(), sorted_test.end(), reverse_order));
 }
   
 void run_multimap_test() {
@@ -352,57 +332,217 @@ void run_multimap_test() {
 }
 
 void run_unordered_set_test() {
-    adt::unordered_set<int> test_set;
-    adt::unordered_set<emplace_test_t, hash_functor, equal_functor> test_set_1;
-    size_t sum = 0;
+    adt::unordered_set<int> set_test;
+    size_t sum, test_sum, index;
 
     srand(time(NULL));
 
-    /* Insert test.  */
+    /* insert() test.  */
+    sum = 0;
     for (size_t i = 0 ; i < 1500 ; i++) {
-        test_set.insert(i);
+        auto p = set_test.insert(i);
+        assert(p.second);
+        assert(*p.first == i);
+        sum += i;
     }
+    assert(set_test.size() == 1500);
 
-    /* Iterators test.  */
-    for (auto it = test_set.begin() ; it != test_set.end() ; it++) {
-        sum += *it;
+    /* iterators test.  */
+    test_sum = 0;
+    for (auto it = set_test.begin() ; it != set_test.end() ; it++) {
+        test_sum += *it;
     }
-    assert(sum == 1124250);
+    assert(sum == test_sum);
 
-    /* Find test.  */
+    /* find() test.  */
     for (size_t i = 0 ; i < 1500 ; i++) {
-        assert(*test_set.find(i) == i);
+        assert(*set_test.find(i) == i);
     }
 
-    /* Erase key test.  */
+    /* this should not compile, keys are read-only.
     for (size_t i = 0 ; i < 1500 ; i++) {
-        assert(test_set.erase(i) == 1);
+        assert(*test_test.find(i) = i + 1);
+    }*/
+
+    /* clear() test.  */
+    set_test.clear();
+    assert(set_test.begin() == set_test.end());
+    assert(set_test.empty());
+
+    /* emplace() test.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        auto p = set_test.emplace(i);
+        assert(p.second);
+        assert(*p.first == i);
     }
-    assert(test_set.empty());
-    for (auto it = test_set.begin() ; it != test_set.end() ; ) {
-        assert(0);
+    assert(set_test.size() == 1500);
+
+    /* erase() test.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        assert(set_test.erase(i) == 1);
     }
+    assert(set_test.begin() == set_test.end());
+    assert(set_test.empty());
 
     for (size_t i = 0 ; i < 1500 ; i++) {
-        test_set.insert(i);
+        int trigger_const_ref = i;
+        auto p = set_test.insert(trigger_const_ref);
+        assert(p.second);
+        assert(*p.first == trigger_const_ref);
+    }
+    assert(set_test.size() == 1500);
+
+    /* equal_range() test.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        auto myrange = set_test.equal_range(i);
+        index = 0;
+        for (auto it = myrange.first ; it != myrange.second ; it++, index++) {
+            assert(*it == i);
+        }
+        assert(index == 1);
     }
 
-    /* Clear test.  */
-    test_set.clear();
-    assert(test_set.empty());
-    for (auto it = test_set.begin() ; it != test_set.end() ; ) {
-        assert(0);
+    auto myrange = set_test.equal_range(-15);
+    assert(myrange.first == set_test.end());
+    assert(myrange.second == set_test.end());
+
+    /* count() test.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        assert(set_test.count(i) == 1);
     }
 
-    /* Emplace test.  */
-    test_set_1.emplace(1, 2, 0.5, "Kostas");
-    assert(test_set_1.begin()->x == 1);
-    assert(test_set_1.begin()->y == 2);
-    assert(test_set_1.begin()->z == 0.5);
-    assert(test_set_1.begin()->str == "Kostas");
+    assert(set_test.count(-15) == 0);
+
+    index = 0;
+    for (auto it = set_test.begin() ; it != set_test.end() ; index++) {
+        /* this also asserts that we can convert iterator to const_iterator.  */
+        it = set_test.erase(it);
+    }
+    assert(set_test.begin() == set_test.end());
+    assert(set_test.empty());
+
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        auto p = set_test.insert(i);
+        assert(p.second);
+        assert(*p.first == i);
+    }
+
+    /* This should not compile, and it doesnt.
+    for (auto it = set_test.begin() ; it != set_test.end() ; it++) {
+        *it = 15;
+    }  */
 }
 
 void run_unordered_multiset_test() {
+    adt::unordered_multiset<int> multiset_test;
+    size_t sum, test_sum, index;
+
+    srand(time(NULL));
+
+    /* insert() test.  */
+    sum = 0;
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        /* Insert same key 3 times.  */
+        auto p = multiset_test.insert(i);
+        assert(*p == i);
+        p = multiset_test.insert(i);
+        assert(*p == i);
+        p = multiset_test.insert(i);
+        assert(*p == i);
+
+        sum += i;
+    }
+    assert(multiset_test.size() == 1500 * 3);
+
+    /* iterators test.  */
+    test_sum = 0;
+    for (auto it = multiset_test.begin() ; it != multiset_test.end() ; it++) {
+        test_sum += *it;
+    }
+    assert(sum * 3 == test_sum);
+
+    /* find() test.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        assert(*multiset_test.find(i) == i);
+    }
+
+    /* this should not compile, keys are read-only.
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        assert(*multiset_test.find(i) = i + 1);
+    }  */
+
+    /* clear() test.  */
+    multiset_test.clear();
+    assert(multiset_test.begin() == multiset_test.end());
+    assert(multiset_test.empty());
+
+    /* emplace() test.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        auto p = multiset_test.emplace(i);
+        assert(*p == i);
+        p = multiset_test.emplace(i);
+        assert(*p == i);
+        p = multiset_test.emplace(i);
+        assert(*p == i);
+    }
+    assert(multiset_test.size() == 1500 * 3);
+
+    /* erase() test.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        assert(multiset_test.erase(i) == 3);
+    }
+    assert(multiset_test.begin() == multiset_test.end());
+    assert(multiset_test.empty());
+
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        int trigger_const_ref = i;
+        auto p = multiset_test.insert(trigger_const_ref);
+        assert(*p == i);
+        p = multiset_test.insert(trigger_const_ref);
+        assert(*p == i);
+        p = multiset_test.insert(trigger_const_ref);
+        assert(*p == i);
+    }
+    assert(multiset_test.size() == 1500 * 3);
+
+    /* equal_range() test.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        auto myrange = multiset_test.equal_range(i);
+        index = 0;
+        for (auto it = myrange.first ; it != myrange.second ; it++, index++) {
+            assert(*it == i);
+        }
+        assert(index == 3);
+    }
+
+    auto myrange = multiset_test.equal_range(-15);
+    assert(myrange.first == multiset_test.end());
+    assert(myrange.second == multiset_test.end());
+
+    /* count() test.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        assert(multiset_test.count(i) == 3);
+    }
+
+    assert(multiset_test.count(-15) == 0);
+
+    for (auto it = multiset_test.begin() ; it != multiset_test.end() ; ) {
+        /* this also asserts that we can convert iterator to const_iterator.  */
+        it = multiset_test.erase(it);
+    }
+    assert(multiset_test.begin() == multiset_test.end());
+    assert(multiset_test.empty());
+
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        auto p = multiset_test.insert(i);
+        assert(*p == i);
+    }
+    assert(multiset_test.size() == 1500);
+
+    /* This should not compile, and it doesnt.
+    for (auto it = multiset_test.begin() ; it != multiset_test.end() ; it++) {
+        *it = 15;
+    }  */
 }
 
 void run_unordered_map_test() {
@@ -489,12 +629,6 @@ void run_unordered_map_test() {
         it = map_test.erase(it);
     }
 
-    /* This should not compile, and it doesnt.
-    for (auto it = map_test.cbegin() ; it != map_test.cend() ; it++) {
-        it->first = 15;
-        it->second = "asd";
-    } */
-
     /* check if we are able to change the mapped values.  */
     for (size_t i = 0 ; i < 1500 ; i++) {
         map_test[i] = "0";
@@ -503,11 +637,17 @@ void run_unordered_map_test() {
     for (auto it = map_test.begin() ; it != map_test.end() ; it++, index++) {
         assert(it->second == "0");
     }
+
+    /* This should not compile, and it doesnt.
+    for (auto it = map_test.cbegin() ; it != map_test.cend() ; it++) {
+        it->first = 15;
+        it->second = "asd";
+    } */
 }
 
 void run_unordered_multimap_test() {
-
 }
+
 
 int main() {
 //    run_list_test();
@@ -517,9 +657,9 @@ int main() {
 //    run_map_test();
 //    run_multimap_test();
     run_unordered_set_test();
+    run_unordered_multiset_test();
     run_unordered_map_test();
-//    run_unordered_multimap_test();
-//    run_unordered_multiset_test();
+    run_unordered_multimap_test();
 
     return 0;    
 }
