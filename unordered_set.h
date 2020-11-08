@@ -21,7 +21,7 @@ namespace adt {
         using pointer = value_type*;
         using reference = value_type&;
         using const_reference = const value_type&;
-        using const_internal_ptr = const value_type*;
+        using const_pointer = const value_type*;
         using difference_type = std::ptrdiff_t;
         class iterator;
         class const_iterator;
@@ -84,7 +84,7 @@ namespace adt {
             using iterator_category = std::forward_iterator_tag;
             using value_type = unordered_set::value_type;
             using reference = unordered_set::const_reference;
-            using pointer = unordered_set::const_internal_ptr;
+            using pointer = unordered_set::const_pointer;
             using difference_type = unordered_set::difference_type;
 
             iterator(const iterator &other) = default;
@@ -144,24 +144,16 @@ namespace adt {
             using iterator_category = std::forward_iterator_tag;
             using value_type = unordered_set::value_type;
             using reference = unordered_set::const_reference;
-            using pointer = unordered_set::const_internal_ptr;
+            using pointer = unordered_set::pointer;
             using difference_type = unordered_set::difference_type;
 
             /* Implicit conversion from iterator.  */
             const_iterator(iterator it) : _it(std::move(it)) {}
 
-            bool operator==(const const_iterator &other) const {
-                return this->_ptr == other._ptr;
-            }
-            bool operator==(internal_ptr *ptr) const {
-                return _it == ptr;
-            }
-            bool operator!=(const const_iterator &other) const {
-                return !(*this == other);
-            }
-            bool operator!=(internal_ptr *ptr) const {
-                return !(*this == ptr);
-            }
+            bool operator==(const const_iterator &other) const { return this->_ptr == other._ptr; }
+            bool operator==(internal_ptr *ptr) const { return _it == ptr; }
+            bool operator!=(const const_iterator &other) const { return !(*this == other); }
+            bool operator!=(internal_ptr *ptr) const { return !(*this == ptr); }
 
             reference operator*() const { return *_it; }
             pointer operator->() const { return _it.operator->(); }

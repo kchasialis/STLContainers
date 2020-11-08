@@ -16,96 +16,6 @@
 
 
 void run_list_test() {
-    int val;
-    size_t loops;
-    adt::list<int> myints;
-    
-    /* push_back test. */
-    for (int i = 0 ; i < 1500 ; i++) {
-        myints.push_back(i);
-    }
-    assert(myints.size() == 1500);
-
-    val = 0;
-    for (auto it = myints.begin() ; it != myints.end() ; it++, val++) {
-        assert(*it == val);
-    }
-
-    /* pop_back() test. */
-    loops = myints.size();
-    for (size_t i = 0 ; i < loops ; i++) {
-        myints.pop_back();
-    }
-    assert(myints.empty());
-    assert(myints.begin() == myints.end());
-
-    /* push_front() test. */
-    for (int i = 0 ; i < 1500 ; i++) {
-        myints.push_front(i);
-    }
-    assert(myints.size() == 1500);
-    
-    val = 1499;
-    for (auto it = myints.begin() ; it != myints.end() ; it++, val--) {
-        assert(*it == val);
-    }
-
-    /* pop_front() test. */
-    for (size_t i = 0 ; i < loops ; i++) {
-        myints.pop_front();
-    }
-    assert(myints.empty());
-    assert(myints.begin() == myints.end());
-
-    for (int i = 0 ; i < 1500 ; i++) {
-        myints.push_back(i);
-    }
-
-    /* remove() test. */
-    val = 1499;
-    for (size_t i = 0 ; i < loops ; i++, val--) {
-        myints.remove(val);
-    }
-    assert(myints.empty());
-    assert(myints.begin() == myints.end());
-
-    /* remove() test. */
-    for (auto it = myints.begin() ; it != myints.end() ; ) {
-        it = myints.remove(it);
-    }
-    assert(myints.empty());
-    assert(myints.begin() == myints.end());
-
-    for (int i = 0 ; i < 1500 ; i++) {
-        myints.push_back(i);
-    }
-
-    /* clear() test. */
-    myints.clear();
-    assert(myints.empty());
-    assert(myints.begin() == myints.end());
-    
-    for (int i = 0 ; i < 1500 ; i++) {
-        myints.push_back(i);
-    }
-
-    /* reverse iterators test. */
-    val = 1499;
-    for (auto it = myints.rbegin() ; it != myints.rend() ; it++, val--) {
-        assert(*it == val);
-    }
-
-    myints.clear();
-
-    for (size_t i = 0 ; i < 100 ; i++) {
-        myints.push_back(150);
-    }
-
-    /* remove() test. */
-    myints.remove(150);
-
-    assert(myints.empty());
-    assert(myints.begin() == myints.end());
 }
 
 void run_vector_test() {
@@ -546,13 +456,13 @@ void run_unordered_multiset_test() {
 }
 
 void run_unordered_map_test() {
-    adt::unordered_map<int, std::string> map_test;
+    adt::unordered_map<int, std::string> unordered_map_test;
     size_t sum, test_sum, index;
 
     /* insert() test.  */
     sum = 0;
     for (size_t i = 0 ; i < 1500 ; i++) {
-        auto p = map_test.insert({i, "kostas" + std::to_string(i)});
+        auto p = unordered_map_test.insert({i, "kostas" + std::to_string(i)});
         assert(p.second);
         assert(p.first->first == i);
         assert(p.first->second == "kostas" + std::to_string(i));
@@ -561,91 +471,258 @@ void run_unordered_map_test() {
 
     /* iterators test.  */
     test_sum = 0;
-    for (auto it = map_test.cbegin() ; it != map_test.cend() ; it++) {
+    for (auto it = unordered_map_test.cbegin() ; it != unordered_map_test.cend() ; it++) {
         test_sum += it->first;
+        assert(it->second == "kostas" + std::to_string(it->first));
     }
     assert(sum == test_sum);
 
     /* operator[] test.  */
     for (size_t i = 0 ; i < 1500 ; i++) {
-        assert(map_test[i] == "kostas" + std::to_string(i));
+        assert(unordered_map_test[i] == "kostas" + std::to_string(i));
     }
 
     /* at() test.  */
     for (size_t i = 0 ; i < 1500 ; i++) {
-        assert(map_test.at(i) == "kostas" + std::to_string(i));
+        assert(unordered_map_test.at(i) == "kostas" + std::to_string(i));
     }
 
     try {
-        map_test.at(1232132);
+        unordered_map_test.at(1232132);
         assert(0);
     } catch (const std::out_of_range& out_of_range) {}
 
     /* find() test.  */
     for (size_t i = 0 ; i < 1500 ; i++) {
-        assert(map_test.find(i)->second == "kostas" + std::to_string(i));
+        auto p = unordered_map_test.find(i);
+        assert(p->first == i);
+        assert(p->second == "kostas" + std::to_string(i));
     }
 
     /* this should not compile, keys are read-only.
     for (size_t i = 0 ; i < 1500 ; i++) {
-        assert(map_test.find(i)->first = i + 1);
-    } */
+        assert(unordered_map_test.find(i)->first = i + 1);
+    }  */
 
     /* this should compile fine.  */
     for (size_t i = 0 ; i < 1500 ; i++) {
-        map_test.find(i)->second = "kostas" + std::to_string(i);
+        unordered_map_test.find(i)->second = "kostas" + std::to_string(i);
     }
 
     /* clear() test.  */
-    map_test.clear();
-    assert(map_test.begin() == map_test.end());
-    assert(map_test.cbegin() == map_test.cend());
-    assert(map_test.empty());
+    unordered_map_test.clear();
+    assert(unordered_map_test.begin() == unordered_map_test.end());
+    assert(unordered_map_test.cbegin() == unordered_map_test.cend());
+    assert(unordered_map_test.empty());
 
     /* emplace() test.  */
     for (size_t i = 0 ; i < 1500 ; i++) {
         std::string str("kostas" + std::to_string(i));
-        auto p = map_test.emplace(i, str);
+        auto p = unordered_map_test.emplace(i, str);
         assert(p.second);
         assert(p.first->first == i);
         assert(p.first->second == "kostas" + std::to_string(i));
+
+        /* Try to insert value with same key.  */
+        p = unordered_map_test.emplace(i, str + "randomstr");
+        assert(!p.second);
+        assert(p.first->first == i);
+        assert(p.first->second == "kostas" + std::to_string(i));
     }
+    assert(unordered_map_test.size() == 1500);
 
     /* erase() test.  */
     for (size_t i = 0 ; i < 1500 ; i++) {
-        assert(map_test.erase(i) == 1);
+        assert(unordered_map_test.erase(i) == 1);
     }
+    assert(unordered_map_test.begin() == unordered_map_test.end());
+    assert(unordered_map_test.cbegin() == unordered_map_test.cend());
+    assert(unordered_map_test.empty());
 
     for (size_t i = 0 ; i < 1500 ; i++) {
-        auto p = map_test.insert(std::make_pair<int, std::string>(i, "kostas" + std::to_string(i)));
+        auto p = unordered_map_test.insert(std::make_pair<int, std::string>(i, "kostas" + std::to_string(i)));
         assert(p.second);
         assert(p.first->first == i);
         assert(p.first->second == "kostas" + std::to_string(i));
     }
+    assert(unordered_map_test.size() == 1500);
 
-    index = 0;
-    for (auto it = map_test.begin() ; it != map_test.end() ; index++) {
-        /* this also asserts that we can convert iterator to const_iterator.  */
-        it = map_test.erase(it);
+    /* equal_range() test.  */
+    for (size_t i = 0; i < 1500; i++) {
+        auto myrange = unordered_map_test.equal_range(i);
+        index = 0;
+        for (auto it = myrange.first; it != myrange.second; it++, index++) {
+            assert(it->first == i);
+            assert(it->second == "kostas" + std::to_string(i));
+        }
+        assert(index == 1);
     }
+
+    auto myrange = unordered_map_test.equal_range(-15);
+    assert(myrange.first == unordered_map_test.end());
+    assert(myrange.second == unordered_map_test.end());
+
+    /* count() test.  */
+    for (size_t i = 0; i < 1500; i++) {
+        assert(unordered_map_test.count(i) == 1);
+    }
+    assert(unordered_map_test.count(-15) == 0);
+
+    /* erase() test.  */
+    for (auto it = unordered_map_test.begin() ; it != unordered_map_test.end() ; ) {
+        /* this also asserts that we can convert iterator to const_iterator.  */
+        it = unordered_map_test.erase(it);
+    }
+    assert(unordered_map_test.begin() == unordered_map_test.end());
+    assert(unordered_map_test.cbegin() == unordered_map_test.cend());
+    assert(unordered_map_test.empty());
 
     /* check if we are able to change the mapped values.  */
     for (size_t i = 0 ; i < 1500 ; i++) {
-        map_test[i] = "0";
+        unordered_map_test[i] = "0";
     }
+    assert(unordered_map_test.size() == 1500);
 
-    for (auto it = map_test.begin() ; it != map_test.end() ; it++, index++) {
+    for (auto it = unordered_map_test.begin() ; it != unordered_map_test.end() ; it++, index++) {
         assert(it->second == "0");
     }
 
     /* This should not compile, and it doesnt.
-    for (auto it = map_test.cbegin() ; it != map_test.cend() ; it++) {
+    for (auto it = unordered_map_test.cbegin() ; it != unordered_map_test.cend() ; it++) {
         it->first = 15;
         it->second = "asd";
-    } */
+    }  */
 }
 
 void run_unordered_multimap_test() {
+    adt::unordered_multimap<int, std::string> unordered_multimap_test;
+    size_t sum, test_sum, index;
+
+    srand(time(NULL));
+
+    /* insert() test.  */
+    sum = 0;
+    for (size_t i = 0; i < 1500; i++) {
+        /* Insert same key 3 times.  */
+        auto p = unordered_multimap_test.insert({i, "kostas" + std::to_string(i)});
+        assert(p->first == i);
+        assert(p->second == "kostas" + std::to_string(i));
+        p = unordered_multimap_test.insert({i, "kostas" + std::to_string(i)});
+        assert(p->first == i);
+        assert(p->second == "kostas" + std::to_string(i));
+        p = unordered_multimap_test.insert({i, "kostas" + std::to_string(i)});
+        assert(p->first == i);
+        assert(p->second == "kostas" + std::to_string(i));
+
+        sum += i;
+    }
+    assert(unordered_multimap_test.size() == 1500 * 3);
+
+    /* iterators test.  */
+    test_sum = 0;
+    for (auto it = unordered_multimap_test.begin(); it != unordered_multimap_test.end(); it++) {
+        test_sum += it->first;
+    }
+    assert(sum * 3 == test_sum);
+
+    /* find() test.  */
+    for (size_t i = 0; i < 1500; i++) {
+        assert(unordered_multimap_test.find(i)->first == i);
+        assert(unordered_multimap_test.find(i)->second == "kostas" + std::to_string(i));
+    }
+
+    /* this should not compile, keys are read-only.
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        assert(unordered_multimap_test.find(i)->first = i + 1);
+    }  */
+
+    /* clear() test.  */
+    unordered_multimap_test.clear();
+    assert(unordered_multimap_test.begin() == unordered_multimap_test.end());
+    assert(unordered_multimap_test.empty());
+
+    /* emplace() test.  */
+    for (size_t i = 0; i < 1500; i++) {
+        auto p = unordered_multimap_test.emplace(i, "kostas" + std::to_string(i));
+        assert(p->first == i);
+        assert(p->second == "kostas" + std::to_string(i));
+        p = unordered_multimap_test.emplace(i, "kostas" + std::to_string(i));
+        assert(p->first == i);
+        assert(p->second == "kostas" + std::to_string(i));
+        p = unordered_multimap_test.emplace(i, "kostas" + std::to_string(i));
+        assert(p->first == i);
+        assert(p->second == "kostas" + std::to_string(i));
+    }
+    assert(unordered_multimap_test.size() == 1500 * 3);
+
+    /* erase() test.  */
+    for (size_t i = 0; i < 1500; i++) {
+        assert(unordered_multimap_test.erase(i) == 3);
+    }
+    assert(unordered_multimap_test.begin() == unordered_multimap_test.end());
+    assert(unordered_multimap_test.cbegin() == unordered_multimap_test.cend());
+    assert(unordered_multimap_test.empty());
+
+    for (size_t i = 0; i < 1500; i++) {
+        std::pair<int, std::string> trigger_const_ref = {i, "kostas" + std::to_string(i)};
+        auto p = unordered_multimap_test.insert(trigger_const_ref);
+        assert(p->first == i);
+        assert(p->second == "kostas" + std::to_string(i));
+        p = unordered_multimap_test.insert(trigger_const_ref);
+        assert(p->first == i);
+        assert(p->second == "kostas" + std::to_string(i));
+        p = unordered_multimap_test.insert(trigger_const_ref);
+        assert(p->first == i);
+        assert(p->second == "kostas" + std::to_string(i));
+    }
+    assert(unordered_multimap_test.size() == 1500 * 3);
+
+    /* equal_range() test.  */
+    for (size_t i = 0; i < 1500; i++) {
+        auto myrange = unordered_multimap_test.equal_range(i);
+        index = 0;
+        for (auto it = myrange.first; it != myrange.second; it++, index++) {
+            assert(it->first == i);
+            assert(it->second == "kostas" + std::to_string(i));
+        }
+        assert(index == 3);
+    }
+
+    auto myrange = unordered_multimap_test.equal_range(-15);
+    assert(myrange.first == unordered_multimap_test.end());
+    assert(myrange.second == unordered_multimap_test.end());
+
+    /* count() test.  */
+    for (size_t i = 0; i < 1500; i++) {
+        assert(unordered_multimap_test.count(i) == 3);
+    }
+    assert(unordered_multimap_test.count(-15) == 0);
+
+    for (auto it = unordered_multimap_test.begin(); it != unordered_multimap_test.end() ;) {
+        /* this also asserts that we can convert iterator to const_iterator.  */
+        it = unordered_multimap_test.erase(it);
+    }
+    assert(unordered_multimap_test.begin() == unordered_multimap_test.end());
+    assert(unordered_multimap_test.cbegin() == unordered_multimap_test.cend());
+    assert(unordered_multimap_test.empty());
+
+    for (size_t i = 0; i < 1500; i++) {
+        auto p = unordered_multimap_test.emplace(i, "whatever");
+        assert(p->first == i);
+        assert(p->second == "whatever");
+    }
+    assert(unordered_multimap_test.size() == 1500);
+
+    /* This should compile fine, we can change the mapped value.  */
+    for (auto it = unordered_multimap_test.begin(); it != unordered_multimap_test.end(); it++) {
+        it->second = "lee";
+    }
+    assert(unordered_multimap_test.find(rand() % 1500)->second == "lee");
+
+    /* This should not compile, its const iterator.
+    for (auto it = unordered_multimap_test.cbegin() ; it != unordered_multimap_test.cend() ; it++) {
+        it->second = "lee";
+    }  */
 }
 
 

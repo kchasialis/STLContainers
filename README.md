@@ -4,6 +4,6 @@ Implementing various STL Abstract Data Types for learning purposes.
 More detailed README soon.
 
 #TODO:
- * Compile & Debug unordered_multimap.
+ * Fix reverse iterators for list.
  * Change all other STLContainers based on umap and uset.
- * Maybe implement some more functions like try_emplace() etc.
+ * Maybe implement some more functionality like more constructors, try_emplace() etc.

@@ -10,7 +10,7 @@
 
 namespace adt {
 
-    template<typename K, typename V, typename Hash, typename Eq>
+    template<typename K, typename V, typename Hash = std::hash<K>, typename Eq = std::equal_to<K>>
     class unordered_multimap {
     public:
         using key_type = K;
@@ -48,6 +48,8 @@ namespace adt {
             multimap_node() : data(), next(nullptr) {}
             multimap_node(const value_type &_data) : data(_data), next(nullptr) {}
             multimap_node(value_type &&_data) : data(_data), next(nullptr) {}
+            template<typename... Args>
+            multimap_node(Args&&... args) : data(std::forward<Args>(args)...), next(nullptr) {}
             multimap_node(const multimap_node &other) = default;
             multimap_node(multimap_node &&other) = default;
         };
@@ -148,24 +150,20 @@ namespace adt {
         public:
             using iterator_category = std::forward_iterator_tag;
             using value_type = unordered_multimap::value_type;
-            using reference = unordered_multimap::reference;
-            using const_reference = unordered_multimap::const_reference;
-            using pointer = unordered_multimap::pointer;
-            using const_pointer = unordered_multimap::const_pointer;
+            using reference = unordered_multimap::const_reference;
+            using pointer = unordered_multimap::const_pointer;
             using difference_type = unordered_multimap::difference_type;
 
             /* Implicit conversion from iterator.  */
             const_iterator(iterator it) : _it(std::move(it)) {}
 
-            bool operator==(const const_iterator &other) const { return this->_ptr == other._ptr; }
+            bool operator==(const const_iterator &other) const { return this->_it == other._it; }
             bool operator==(internal_ptr *ptr) const { return _it == ptr; }
             bool operator!=(const const_iterator &other) const { return !(*this == other); }
             bool operator!=(internal_ptr *ptr) const { return !(*this == ptr); }
 
-            reference operator*() { return *_it; }
-            const_reference operator*() const { return *_it; }
-            pointer operator->() { return _it.operator->(); }
-            const_pointer operator->() const { return _it.operator->(); }
+            reference operator*() const { return *_it; }
+            pointer operator->() const { return _it.operator->(); }
 
             const_iterator &operator++() {
                 ++_it;
@@ -384,7 +382,7 @@ namespace adt {
 
     template<typename K, typename V, typename Hash, typename Eq>
     umultimap::iterator unordered_multimap<K, V, Hash, Eq>::insert(const_reference val) {
-        return _hash_insert<unordered_multimap<K, V, Hash, Eq>, iterator, key_type, const_reference>(this, val, val, val);
+        return _hash_insert<unordered_multimap<K, V, Hash, Eq>, iterator, key_type, const_reference>(this, val.first, val, val);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
@@ -398,7 +396,7 @@ namespace adt {
     umultimap::iterator unordered_multimap<K, V, Hash, Eq>::emplace(Args &&... args) {
         internal_ptr val = new multimap_node(std::forward<Args>(args)...);
 
-        return _hash_insert<unordered_multimap<K, V, Hash, Eq>, iterator, key_type, internal_ptr>(this, val->data, val, val);
+        return _hash_insert<unordered_multimap<K, V, Hash, Eq>, iterator, key_type, internal_ptr>(this, val->data.first, val, val);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
@@ -491,7 +489,7 @@ namespace adt {
 
     template<typename K, typename V, typename Hash, typename Eq>
     const umultimap::key_type &unordered_multimap<K, V, Hash, Eq>::_get_slot_key(internal_ptr slot) {
-        return slot->data;
+        return slot->data.first;
     }
 
     template<typename K, typename V, typename Hash, typename Eq>

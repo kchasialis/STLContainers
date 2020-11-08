@@ -87,15 +87,15 @@ namespace adt {
             iterator(const iterator &other) = default;
             iterator(iterator &&other) = default;
 
-            iterator &operator=(const iterator &other) = default;
+            iterator &operator=(const iterator &rhs) = default;
             iterator &operator=(internal_ptr *ptr) {
                 this->_ptr = ptr;
                 return *this;
             }
 
-            bool operator==(const iterator &other) const { return this->_ptr == other._ptr; }
+            bool operator==(const iterator &rhs) const { return this->_ptr == rhs._ptr; }
             bool operator==(internal_ptr *ptr) const { return this->_ptr == ptr; }
-            bool operator!=(const iterator &other) const { return !(*this == other); }
+            bool operator!=(const iterator &rhs) const { return !(*this == rhs); }
             bool operator!=(internal_ptr *ptr) const { return !(*this == ptr); }
 
             iterator &operator++() {
@@ -152,18 +152,10 @@ namespace adt {
             /* Implicit conversion from iterator.  */
             const_iterator(iterator it) : _it(std::move(it)) {}
 
-            bool operator==(const const_iterator &other) const {
-                return this->_ptr == other._ptr;
-            }
-            bool operator==(internal_ptr *ptr) const {
-                return _it == ptr;
-            }
-            bool operator!=(const const_iterator &other) const {
-                return !(*this == other);
-            }
-            bool operator!=(internal_ptr *ptr) const {
-                return !(*this == ptr);
-            }
+            bool operator==(const const_iterator &other) const { return this->_it == other._it; }
+            bool operator==(internal_ptr *ptr) const { return _it == ptr; }
+            bool operator!=(const const_iterator &other) const { return !(*this == other); }
+            bool operator!=(internal_ptr *ptr) const { return !(*this == ptr); }
 
             reference operator*() const { return *_it; }
             pointer operator->() const { return _it.operator->(); }

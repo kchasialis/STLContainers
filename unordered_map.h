@@ -154,18 +154,10 @@ namespace adt {
             /* Implicit conversion from iterator.  */
             const_iterator(iterator it) : _it(std::move(it)) {}
 
-            bool operator==(const const_iterator &other) const {
-                return this->_it == other._it;
-            }
-            bool operator==(internal_ptr *ptr) const {
-                return _it == ptr;
-            }
-            bool operator!=(const const_iterator &other) const {
-                return !(*this == other);
-            }
-            bool operator!=(internal_ptr *ptr) const {
-                return !(*this == ptr);
-            }
+            bool operator==(const const_iterator &other) const { return this->_it == other._it; }
+            bool operator==(internal_ptr *ptr) const { return _it == ptr; }
+            bool operator!=(const const_iterator &other) const { return !(*this == other); }
+            bool operator!=(internal_ptr *ptr) const { return !(*this == ptr); }
 
             reference operator*() const { return *_it; }
             pointer operator->() const { return _it.operator->(); }
@@ -222,7 +214,9 @@ namespace adt {
         const mapped_type &at(const key_type &key) const noexcept(false);
         iterator find(const key_type &key);
         const_iterator find(const key_type &key) const;
-
+        size_type count(const key_type &key) const;
+        std::pair<iterator, iterator> equal_range(const key_type &key);
+        std::pair<const_iterator, const_iterator> equal_range(const key_type &key) const;
 
         friend void swap(unordered_map& lhs, unordered_map& rhs) {
             using std::swap;
@@ -452,6 +446,24 @@ namespace adt {
     template<typename K, typename V, typename Hash, typename Eq>
     umap::const_iterator unordered_map<K, V, Hash, Eq>::find(const key_type &key) const {
         return const_cast<unordered_map<K, V, Hash, Eq>*>(this)->find(key);
+    }
+
+    template<typename K, typename V, typename Hash, typename Eq>
+    umap::size_type unordered_map<K, V, Hash, Eq>::count(const key_type &key) const {
+        return find(key)._it._ptr != &_slots[_capacity] ? 1 : 0;
+    }
+
+    template<typename K, typename V, typename Hash, typename Eq>
+    std::pair<umap::iterator, umap::iterator> unordered_map<K, V, Hash, Eq>::equal_range(const key_type &key) {
+        auto first = find(key);
+        auto second(first);
+
+        return {first, ++second};
+    }
+
+    template<typename K, typename V, typename Hash, typename Eq>
+    std::pair<umap::const_iterator, umap::const_iterator> unordered_map<K, V, Hash, Eq>::equal_range(const key_type &key) const {
+        return const_cast<unordered_map<K, V, Hash, Eq>*>(this)->equal_range(key);
     }
 
     /* Private member functions.  */
