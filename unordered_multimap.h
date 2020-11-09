@@ -6,7 +6,9 @@
 
 #include "hash_internal.h"
 
-#define umultimap typename unordered_multimap<K, V, Hash, Eq>
+#define umultimap_t typename unordered_multimap<K, V, Hash, Eq>
+
+using namespace hash_internal;
 
 namespace adt {
 
@@ -18,12 +20,12 @@ namespace adt {
         using value_type = std::pair<const K, V>;
         using hasher = Hash;
         using key_equal = Eq;
-        using size_type = size_t;
         using pointer = value_type *;
         using reference = value_type &;
         using const_reference = const value_type &;
         using const_pointer = const value_type *;
         using difference_type = std::ptrdiff_t;
+        using size_type = std::size_t;
         class iterator;
         class const_iterator;
 
@@ -346,61 +348,61 @@ namespace adt {
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::size_type unordered_multimap<K, V, Hash, Eq>::size() const noexcept {
+    umultimap_t::size_type unordered_multimap<K, V, Hash, Eq>::size() const noexcept {
         return _size;
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::iterator unordered_multimap<K, V, Hash, Eq>::begin() const noexcept {
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::begin() const noexcept {
         return iterator(&_slots[_first_elem_pos]);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::iterator unordered_multimap<K, V, Hash, Eq>::end() const noexcept {
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::end() const noexcept {
         return iterator(&_slots[_capacity]);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::const_iterator unordered_multimap<K, V, Hash, Eq>::cbegin() const noexcept {
+    umultimap_t::const_iterator unordered_multimap<K, V, Hash, Eq>::cbegin() const noexcept {
         return const_iterator(&_slots[_first_elem_pos]);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::const_iterator unordered_multimap<K, V, Hash, Eq>::cend() const noexcept {
+    umultimap_t::const_iterator unordered_multimap<K, V, Hash, Eq>::cend() const noexcept {
         return const_iterator(&_slots[_capacity]);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::hasher unordered_multimap<K, V, Hash, Eq>::hash_function() const {
+    umultimap_t::hasher unordered_multimap<K, V, Hash, Eq>::hash_function() const {
         return _hasher;
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::key_equal unordered_multimap<K, V, Hash, Eq>::key_eq() const {
+    umultimap_t::key_equal unordered_multimap<K, V, Hash, Eq>::key_eq() const {
         return _keq;
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::iterator unordered_multimap<K, V, Hash, Eq>::insert(const_reference val) {
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::insert(const_reference val) {
         return _hash_insert<unordered_multimap<K, V, Hash, Eq>, iterator, key_type, const_reference>(this, val.first, val, val);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
     template<typename P>
-    umultimap::iterator unordered_multimap<K, V, Hash, Eq>::insert(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type) {
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::insert(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type) {
         return _hash_insert<unordered_multimap<K, V, Hash, Eq>, iterator, key_type, P&&>(this, val.first, std::forward<P>(val), std::forward<P>(val));
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
     template<class... Args>
-    umultimap::iterator unordered_multimap<K, V, Hash, Eq>::emplace(Args &&... args) {
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::emplace(Args &&... args) {
         internal_ptr val = new multimap_node(std::forward<Args>(args)...);
 
         return _hash_insert<unordered_multimap<K, V, Hash, Eq>, iterator, key_type, internal_ptr>(this, val->data.first, val, val);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::iterator unordered_multimap<K, V, Hash, Eq>::erase(const_iterator pos) {
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::erase(const_iterator pos) {
 
         if ((*(pos._it._ptr))->next != nullptr) {
             _erase(pos._it._ptr, false);
@@ -411,7 +413,7 @@ namespace adt {
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::size_type unordered_multimap<K, V, Hash, Eq>::erase(const key_type &key) {
+    umultimap_t::size_type unordered_multimap<K, V, Hash, Eq>::erase(const key_type &key) {
         return _erase(find(key)._ptr, true).second;
     }
 
@@ -427,17 +429,17 @@ namespace adt {
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::iterator unordered_multimap<K, V, Hash, Eq>::find(const key_type &key) {
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::find(const key_type &key) {
         return _hash_find<>(this, key);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::const_iterator unordered_multimap<K, V, Hash, Eq>::find(const key_type &key) const {
+    umultimap_t::const_iterator unordered_multimap<K, V, Hash, Eq>::find(const key_type &key) const {
         return const_cast<unordered_multimap<K, V, Hash, Eq>*>(this)->find(key);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::size_type unordered_multimap<K, V, Hash, Eq>::count(const key_type &key) const {
+    umultimap_t::size_type unordered_multimap<K, V, Hash, Eq>::count(const key_type &key) const {
         multimap_node *current;
         size_t count = 0;
         multimap_node **found_ptr = const_cast<unordered_multimap<K, V, Hash, Eq>*>(this)->find(key)._ptr;
@@ -454,7 +456,7 @@ namespace adt {
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    std::pair<umultimap::iterator, umultimap::iterator> unordered_multimap<K, V, Hash, Eq>::equal_range(const key_type &key) {
+    std::pair<umultimap_t::iterator, umultimap_t::iterator> unordered_multimap<K, V, Hash, Eq>::equal_range(const key_type &key) {
         multimap_node **first = find(key)._ptr;
         multimap_node **second = &(_slots[first - _slots]);
 
@@ -467,7 +469,7 @@ namespace adt {
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    std::pair<umultimap::iterator, umultimap::const_iterator> unordered_multimap<K, V, Hash, Eq>::equal_range(const key_type &key) const {
+    std::pair<umultimap_t::iterator, umultimap_t::const_iterator> unordered_multimap<K, V, Hash, Eq>::equal_range(const key_type &key) const {
         return const_cast<unordered_multimap<K, V, Hash, Eq>*>(this)->equal_range(key);
     }
 
@@ -478,7 +480,7 @@ namespace adt {
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::hash_info unordered_multimap<K, V, Hash, Eq>::_get_hash_info(const key_type &key) {
+    umultimap_t::hash_info unordered_multimap<K, V, Hash, Eq>::_get_hash_info(const key_type &key) {
         return _hash_get_hash_info<>(this, key);
     }
 
@@ -488,17 +490,17 @@ namespace adt {
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    const umultimap::key_type &unordered_multimap<K, V, Hash, Eq>::_get_slot_key(internal_ptr slot) {
+    const umultimap_t::key_type &unordered_multimap<K, V, Hash, Eq>::_get_slot_key(internal_ptr slot) {
         return slot->data.first;
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::find_insert_info unordered_multimap<K, V, Hash, Eq>::_find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash) {
+    umultimap_t::find_insert_info unordered_multimap<K, V, Hash, Eq>::_find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash) {
         return _hash_find_or_prepare_insert<>(this, key, pos, h2_hash);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::iterator unordered_multimap<K, V, Hash, Eq>::_add_to_list(const iterator &it, internal_ptr new_node) {
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::_add_to_list(const iterator &it, internal_ptr new_node) {
         multimap_node *head = *(it._ptr);
 
         for (; head->next != nullptr ; head = head->next);
@@ -510,46 +512,46 @@ namespace adt {
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::iterator unordered_multimap<K, V, Hash, Eq>::_handle_elem_found(const iterator &it, const_reference val) {
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::_handle_elem_found(const iterator &it, const_reference val) {
         return _add_to_list(it, new multimap_node(val));
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
     template<typename P>
-    umultimap::iterator unordered_multimap<K, V, Hash, Eq>::_handle_elem_found(const iterator &it, P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type) {
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::_handle_elem_found(const iterator &it, P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type) {
         return _add_to_list(it, new multimap_node(std::forward<value_type>(val)));
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::iterator unordered_multimap<K, V, Hash, Eq>::_handle_elem_found(const iterator &it, internal_ptr new_node) {
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::_handle_elem_found(const iterator &it, internal_ptr new_node) {
         return _add_to_list(it, new_node);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::iterator unordered_multimap<K, V, Hash, Eq>::_handle_elem_not_found(const iterator &it) {
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::_handle_elem_not_found(const iterator &it) {
         _n_slots++;
         return it;
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::internal_ptr unordered_multimap<K, V, Hash, Eq>::_construct_new_element(const_reference val) {
+    umultimap_t::internal_ptr unordered_multimap<K, V, Hash, Eq>::_construct_new_element(const_reference val) {
         return new multimap_node(val);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
     template<typename P>
-    umultimap::internal_ptr unordered_multimap<K, V, Hash, Eq>::_construct_new_element(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type) {
+    umultimap_t::internal_ptr unordered_multimap<K, V, Hash, Eq>::_construct_new_element(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type) {
         return new multimap_node(std::forward<value_type>(val));
     }
 
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::internal_ptr unordered_multimap<K, V, Hash, Eq>::_construct_new_element(internal_ptr val) {
+    umultimap_t::internal_ptr unordered_multimap<K, V, Hash, Eq>::_construct_new_element(internal_ptr val) {
         return val;
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::size_type unordered_multimap<K, V, Hash, Eq>::_delete_all_slots(size_type pos) {
+    umultimap_t::size_type unordered_multimap<K, V, Hash, Eq>::_delete_all_slots(size_type pos) {
         multimap_node *to_delete;
         multimap_node *current = _slots[pos];
         size_type count = 0;
@@ -573,7 +575,7 @@ namespace adt {
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap::size_type unordered_multimap<K, V, Hash, Eq>::_delete_slot(size_type pos) {
+    umultimap_t::size_type unordered_multimap<K, V, Hash, Eq>::_delete_slot(size_type pos) {
         multimap_node *to_delete = _slots[pos]->next;
 
         if (to_delete == nullptr) {
@@ -590,7 +592,7 @@ namespace adt {
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    std::pair<umultimap::size_type, umultimap::size_type> unordered_multimap<K, V, Hash, Eq>::_erase(internal_ptr *ptr, bool erase_all) {
+    std::pair<umultimap_t::size_type, umultimap_t::size_type> unordered_multimap<K, V, Hash, Eq>::_erase(internal_ptr *ptr, bool erase_all) {
         return _hash_erase<>(this, ptr, erase_all);
     }
 }

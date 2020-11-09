@@ -8,6 +8,8 @@
 
 #define umap typename unordered_map<K, V, Hash, Eq>
 
+using namespace hash_internal;
+
 namespace adt {
 
     template<typename K, typename V, typename Hash = std::hash<K>, typename Eq = std::equal_to<K>>
@@ -22,8 +24,8 @@ namespace adt {
         using const_reference = const value_type &;
         using pointer = value_type *;
         using const_pointer = const value_type *;
-        using size_type = size_t;
         using difference_type = std::ptrdiff_t;
+        using size_type = std::size_t;
         class iterator;
         class const_iterator;
 
@@ -97,15 +99,15 @@ namespace adt {
             iterator(const iterator &other) = default;
             iterator(iterator &&other) = default;
 
-            iterator &operator=(const iterator &other) = default;
+            iterator &operator=(const iterator &rhs) = default;
             iterator &operator=(internal_ptr *ptr) {
                 this->_ptr = ptr;
                 return *this;
             }
 
-            bool operator==(const iterator &other) const { return this->_ptr == other._ptr; }
+            bool operator==(const iterator &rhs) const { return this->_ptr == rhs._ptr; }
             bool operator==(internal_ptr *ptr) const { return this->_ptr == ptr; }
-            bool operator!=(const iterator &other) const { return !(*this == other); }
+            bool operator!=(const iterator &rhs) const { return !(*this == rhs); }
             bool operator!=(internal_ptr *ptr) const { return !(*this == ptr); }
 
             iterator &operator++() {
@@ -141,6 +143,8 @@ namespace adt {
 
         class const_iterator {
             friend class unordered_map;
+            friend class iterator;
+            
             using internal_ptr = unordered_map::internal_ptr;
 
         public:
@@ -153,6 +157,12 @@ namespace adt {
 
             /* Implicit conversion from iterator.  */
             const_iterator(iterator it) : _it(std::move(it)) {}
+
+            const_iterator &operator=(const const_iterator &rhs) = default;
+            const_iterator &operator=(internal_ptr *ptr) {
+                this->_it = ptr;
+                return *this;
+            }
 
             bool operator==(const const_iterator &other) const { return this->_it == other._it; }
             bool operator==(internal_ptr *ptr) const { return _it == ptr; }

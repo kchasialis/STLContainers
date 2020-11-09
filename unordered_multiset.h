@@ -6,7 +6,9 @@
 
 #include "hash_internal.h"
 
-#define umultiset typename unordered_multiset<Key, Hash, Eq>
+#define umultiset_t typename unordered_multiset<Key, Hash, Eq>
+
+using namespace hash_internal;
 
 namespace adt {
 
@@ -17,14 +19,14 @@ namespace adt {
         using value_type = Key;
         using hasher = Hash;
         using key_equal = Eq;
-        using size_type = size_t;
         using pointer = value_type *;
         using reference = value_type &;
         using const_reference = const value_type &;
         using const_pointer = const value_type *;
         using difference_type = std::ptrdiff_t;
+        using size_type = std::size_t;
         class iterator;
-        class const_iterator;
+        using const_iterator = iterator;
 
     private:
         struct hash_info {
@@ -136,40 +138,6 @@ namespace adt {
             iterator(internal_ptr *ptr = nullptr) : _ptr(ptr) {
                 if (ptr != nullptr) _it = *_ptr;
             }
-        };
-
-        class const_iterator {
-            friend class unordered_multiset;
-            using internal_ptr = unordered_multiset::internal_ptr;
-
-        public:
-            using iterator_category = std::forward_iterator_tag;
-            using value_type = unordered_multiset::value_type;
-            using reference = unordered_multiset::const_reference;
-            using pointer = unordered_multiset::const_pointer;
-            using difference_type = unordered_multiset::difference_type;
-
-            /* Implicit conversion from iterator.  */
-            const_iterator(iterator it) : _it(std::move(it)) {}
-
-            bool operator==(const const_iterator &other) const { return this->_it == other._it; }
-            bool operator==(internal_ptr *ptr) const { return _it == ptr; }
-            bool operator!=(const const_iterator &other) const { return !(*this == other); }
-            bool operator!=(internal_ptr *ptr) const { return !(*this == ptr); }
-
-            reference operator*() const { return *_it; }
-            pointer operator->() const { return _it.operator->(); }
-
-            const_iterator &operator++() {
-                ++_it;
-                return *this;
-            }
-            const_iterator operator++(int) { return _it++; }
-
-        private:
-            iterator _it;
-
-            const_iterator(internal_ptr *ptr) : _it(ptr) {}
         };
 
         /* Constructors/Destructors.  */
@@ -338,60 +306,60 @@ namespace adt {
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::size_type unordered_multiset<Key, Hash, Eq>::size() const noexcept {
+    umultiset_t::size_type unordered_multiset<Key, Hash, Eq>::size() const noexcept {
         return _size;
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::iterator unordered_multiset<Key, Hash, Eq>::begin() const noexcept {
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::begin() const noexcept {
         return iterator(&_slots[_first_elem_pos]);
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::iterator unordered_multiset<Key, Hash, Eq>::end() const noexcept {
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::end() const noexcept {
         return iterator(&_slots[_capacity]);
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::const_iterator unordered_multiset<Key, Hash, Eq>::cbegin() const noexcept {
+    umultiset_t::const_iterator unordered_multiset<Key, Hash, Eq>::cbegin() const noexcept {
         return const_iterator(&_slots[_first_elem_pos]);
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::const_iterator unordered_multiset<Key, Hash, Eq>::cend() const noexcept {
+    umultiset_t::const_iterator unordered_multiset<Key, Hash, Eq>::cend() const noexcept {
         return const_iterator(&_slots[_capacity]);
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::hasher unordered_multiset<Key, Hash, Eq>::hash_function() const {
+    umultiset_t::hasher unordered_multiset<Key, Hash, Eq>::hash_function() const {
         return _hasher;
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::key_equal unordered_multiset<Key, Hash, Eq>::key_eq() const {
+    umultiset_t::key_equal unordered_multiset<Key, Hash, Eq>::key_eq() const {
         return _keq;
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::iterator unordered_multiset<Key, Hash, Eq>::insert(const_reference val) {
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::insert(const_reference val) {
         return _hash_insert<unordered_multiset<Key, Hash, Eq>, iterator, key_type, const_reference>(this, val, val, val);
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::iterator unordered_multiset<Key, Hash, Eq>::insert(value_type &&val) {
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::insert(value_type &&val) {
         return _hash_insert<unordered_multiset<Key, Hash, Eq>, iterator, key_type, value_type&&>(this, val, std::forward<value_type>(val), std::forward<value_type>(val));
     }
 
     template<typename Key, class Hash, class Eq>
     template<class... Args>
-    umultiset::iterator unordered_multiset<Key, Hash, Eq>::emplace(Args &&... args) {
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::emplace(Args &&... args) {
         internal_ptr val = new multiset_node(std::forward<Args>(args)...);
 
         return _hash_insert<unordered_multiset<Key, Hash, Eq>, iterator, key_type, internal_ptr>(this, val->data, val, val);
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::iterator unordered_multiset<Key, Hash, Eq>::erase(const_iterator pos) {
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::erase(const_iterator pos) {
 
         if ((*(pos._it._ptr))->next != nullptr) {
           _erase(pos._it._ptr, false);
@@ -402,7 +370,7 @@ namespace adt {
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::size_type unordered_multiset<Key, Hash, Eq>::erase(const key_type &key) {
+    umultiset_t::size_type unordered_multiset<Key, Hash, Eq>::erase(const key_type &key) {
         return _erase(find(key)._ptr, true).second;
     }
 
@@ -418,17 +386,17 @@ namespace adt {
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::iterator unordered_multiset<Key, Hash, Eq>::find(const key_type &key) {
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::find(const key_type &key) {
         return _hash_find<>(this, key);
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::const_iterator unordered_multiset<Key, Hash, Eq>::find(const key_type &key) const {
+    umultiset_t::const_iterator unordered_multiset<Key, Hash, Eq>::find(const key_type &key) const {
         return const_cast<unordered_multiset<Key, Hash, Eq>*>(this)->find(key);
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::size_type unordered_multiset<Key, Hash, Eq>::count(const key_type &key) const {
+    umultiset_t::size_type unordered_multiset<Key, Hash, Eq>::count(const key_type &key) const {
         multiset_node *current;
         size_t count = 0;
         multiset_node **found_ptr = const_cast<unordered_multiset<Key, Hash, Eq>*>(this)->find(key)._ptr;
@@ -445,7 +413,7 @@ namespace adt {
     }
 
     template<typename Key, class Hash, class Eq>
-    std::pair<umultiset::iterator, umultiset::iterator> unordered_multiset<Key, Hash, Eq>::equal_range(const key_type &key) {
+    std::pair<umultiset_t::iterator, umultiset_t::iterator> unordered_multiset<Key, Hash, Eq>::equal_range(const key_type &key) {
         multiset_node **first = find(key)._ptr;
         multiset_node **second = &(_slots[first - _slots]);
 
@@ -458,7 +426,7 @@ namespace adt {
     }
 
     template<typename Key, class Hash, class Eq>
-    std::pair<umultiset::iterator, umultiset::const_iterator> unordered_multiset<Key, Hash, Eq>::equal_range(const key_type &key) const {
+    std::pair<umultiset_t::iterator, umultiset_t::const_iterator> unordered_multiset<Key, Hash, Eq>::equal_range(const key_type &key) const {
         return const_cast<unordered_multiset<Key, Hash, Eq>*>(this)->equal_range(key);
     }
 
@@ -469,7 +437,7 @@ namespace adt {
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::hash_info unordered_multiset<Key, Hash, Eq>::_get_hash_info(const key_type &key) {
+    umultiset_t::hash_info unordered_multiset<Key, Hash, Eq>::_get_hash_info(const key_type &key) {
         return _hash_get_hash_info<>(this, key);
     }
 
@@ -479,17 +447,17 @@ namespace adt {
     }
 
     template<typename Key, class Hash, class Eq>
-    const umultiset::key_type &unordered_multiset<Key, Hash, Eq>::_get_slot_key(internal_ptr slot) {
+    const umultiset_t::key_type &unordered_multiset<Key, Hash, Eq>::_get_slot_key(internal_ptr slot) {
         return slot->data;
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::find_insert_info unordered_multiset<Key, Hash, Eq>::_find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash) {
+    umultiset_t::find_insert_info unordered_multiset<Key, Hash, Eq>::_find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash) {
         return _hash_find_or_prepare_insert<>(this, key, pos, h2_hash);
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::iterator unordered_multiset<Key, Hash, Eq>::_add_to_list(const iterator &it, internal_ptr new_node) {
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::_add_to_list(const iterator &it, internal_ptr new_node) {
         multiset_node *head = *(it._ptr);
 
         for (; head->next != nullptr ; head = head->next);
@@ -501,44 +469,44 @@ namespace adt {
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::iterator unordered_multiset<Key, Hash, Eq>::_handle_elem_found(const iterator &it, const_reference val) {
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::_handle_elem_found(const iterator &it, const_reference val) {
         return _add_to_list(it, new multiset_node(val));
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::iterator unordered_multiset<Key, Hash, Eq>::_handle_elem_found(const iterator &it, value_type &&val) {
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::_handle_elem_found(const iterator &it, value_type &&val) {
         return _add_to_list(it, new multiset_node(std::forward<value_type>(val)));
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::iterator unordered_multiset<Key, Hash, Eq>::_handle_elem_found(const iterator &it, internal_ptr new_node) {
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::_handle_elem_found(const iterator &it, internal_ptr new_node) {
         return _add_to_list(it, new_node);
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::iterator unordered_multiset<Key, Hash, Eq>::_handle_elem_not_found(const iterator &it) {
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::_handle_elem_not_found(const iterator &it) {
         _n_slots++;
         return it;
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::internal_ptr unordered_multiset<Key, Hash, Eq>::_construct_new_element(const_reference val) {
+    umultiset_t::internal_ptr unordered_multiset<Key, Hash, Eq>::_construct_new_element(const_reference val) {
         return new multiset_node(val);
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::internal_ptr unordered_multiset<Key, Hash, Eq>::_construct_new_element(value_type &&val) {
+    umultiset_t::internal_ptr unordered_multiset<Key, Hash, Eq>::_construct_new_element(value_type &&val) {
         return new multiset_node(std::forward<value_type>(val));
     }
 
 
     template<typename Key, class Hash, class Eq>
-    umultiset::internal_ptr unordered_multiset<Key, Hash, Eq>::_construct_new_element(internal_ptr val) {
+    umultiset_t::internal_ptr unordered_multiset<Key, Hash, Eq>::_construct_new_element(internal_ptr val) {
         return val;
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::size_type unordered_multiset<Key, Hash, Eq>::_delete_all_slots(size_type pos) {
+    umultiset_t::size_type unordered_multiset<Key, Hash, Eq>::_delete_all_slots(size_type pos) {
         multiset_node *to_delete;
         multiset_node *current = _slots[pos];
         size_type count = 0;
@@ -562,7 +530,7 @@ namespace adt {
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset::size_type unordered_multiset<Key, Hash, Eq>::_delete_slot(size_type pos) {
+    umultiset_t::size_type unordered_multiset<Key, Hash, Eq>::_delete_slot(size_type pos) {
         multiset_node *to_delete = _slots[pos]->next;
 
         if (to_delete == nullptr) {
@@ -579,7 +547,7 @@ namespace adt {
     }
 
     template<typename Key, class Hash, class Eq>
-    std::pair<umultiset::size_type, umultiset::size_type> unordered_multiset<Key, Hash, Eq>::_erase(internal_ptr *ptr, bool erase_all) {
+    std::pair<umultiset_t::size_type, umultiset_t::size_type> unordered_multiset<Key, Hash, Eq>::_erase(internal_ptr *ptr, bool erase_all) {
         return _hash_erase<>(this, ptr, erase_all);
     }
 }

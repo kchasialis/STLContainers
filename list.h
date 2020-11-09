@@ -21,7 +21,7 @@ namespace adt {
         class iterator;
         class const_iterator;
         class reverse_iterator;
-        class reverse_const_iterator;
+        class const_reverse_iterator;
 
     private:
         struct list_node {
@@ -156,11 +156,79 @@ namespace adt {
         };
 
         class reverse_iterator {
+            friend class list;
 
+        public:
+            using iterator_category = std::bidirectional_iterator_tag;
+            using value_type = list::value_type;
+            using reference = list::reference;
+            using pointer = list::pointer;
+            using difference_type = list::difference_type;
+
+            /* Implicit conversion from iterator.  */
+            reverse_iterator(iterator it) : _it(std::move(it)) {}
+
+            bool operator==(const reverse_iterator &other) const { return this->_it == other._it; }
+            bool operator==(list_node *ptr) const { return _it == ptr; }
+            bool operator!=(const reverse_iterator &other) const { return !(*this == other); }
+            bool operator!=(list_node *ptr) const { return !(*this == ptr); }
+
+            reference operator*() const { return *_it; }
+            pointer operator->() const { return _it.operator->(); }
+
+            reverse_iterator &operator++() {
+                --_it;
+                return *this;
+            }
+            reverse_iterator operator++(int) { return _it--; }
+            reverse_iterator &operator--() {
+                ++_it;
+                return *this;
+            }
+            reverse_iterator operator--(int) { return _it++; }
+
+        private:
+            iterator _it;
+
+            reverse_iterator(list_node *ptr) : _it(ptr) {};
         };
 
         class const_reverse_iterator {
+            friend class list;
 
+        public:
+            using iterator_category = std::bidirectional_iterator_tag;
+            using value_type = list::value_type;
+            using reference = list::const_reference;
+            using pointer = list::const_pointer;
+            using difference_type = list::difference_type;
+
+            /* Implicit conversion from iterator.  */
+            const_reverse_iterator(iterator it) : _it(std::move(it)) {}
+
+            bool operator==(const const_reverse_iterator &other) const { return this->_it == other._it; }
+            bool operator==(list_node *ptr) const { return _it == ptr; }
+            bool operator!=(const const_reverse_iterator &other) const { return !(*this == other); }
+            bool operator!=(list_node *ptr) const { return !(*this == ptr); }
+
+            reference operator*() const { return *_it; }
+            pointer operator->() const { return _it.operator->(); }
+
+            const_reverse_iterator &operator++() {
+                --_it;
+                return *this;
+            }
+            const_reverse_iterator operator++(int) { return _it--; }
+            const_reverse_iterator &operator--() {
+                ++_it;
+                return *this;
+            }
+            const_reverse_iterator operator--(int) { return _it++; }
+
+        private:
+            iterator _it;
+
+            const_reverse_iterator(list_node *ptr) : _it(ptr) {};
         };
 
         /* Constructors/Destructors.  */
@@ -243,7 +311,10 @@ namespace adt {
         template<class BinaryPredicate>
         void _unique(BinaryPredicate binary_pred);
         template<class Compare>
-        void _merge_sort(Compare comp);
+        void _merge_sort(list_node **head, Compare comp);
+        void _split_to_halves(list_node *current, list_node **left_half_head, list_node **right_half_head);
+        template<class Compare>
+        list_node *_merge_sorted(list_node *left_list_head, list_node *right_list_head, Compare comp);
     };
 
     /* Implementation.  */
@@ -545,13 +616,25 @@ namespace adt {
 
     template<typename T>
     void list<T>::sort() {
-        _merge_sort(default_comp_sort());
+        if (!empty()) {
+            _head->previous = _sentinel->previous;
+            _sentinel->previous->next = nullptr;
+            _merge_sort(default_comp_sort());
+            _head->previous->next = _sentinel;
+            _head->previous = _sentinel;
+        }
     }
 
     template<typename T>
     template<class Compare>
     void list<T>::sort(Compare comp) {
-        _merge_sort(comp);
+        if (!empty()) {
+            _head->previous = _sentinel->previous;
+            _sentinel->previous->next = nullptr;
+            _merge_sort(default_comp_sort());
+            _head->previous->next = _sentinel;
+            _head->previous = _sentinel;
+        }
     }
 
     template<typename T>
@@ -704,10 +787,85 @@ namespace adt {
         }
     }
 
-    /* TODO: add me:)  */
     template<typename T>
     template<class Compare>
-    void list<T>::_merge_sort(Compare comp) {
+    void list<T>::_merge_sort(list_node **head, Compare comp) {
+        list_node *left_half, *right_half;
 
+        if (*head != nullptr && (*head)->next != nullptr) {
+            _split_to_halves(*head, &left_half, &right_half);
+
+            _merge_sort(&left_half, comp);
+            _merge_sort(&right_half, comp);
+
+            *head = _merge_sorted(left_half, right_half, comp);
+        }
+    }
+
+    /* Splits the list into 2 sub lists.
+     * Left sublist is always >= right sublist.  */
+    template<typename T>
+    void list<T>::_split_to_halves(list_node *current, list_node **left_half_head, list_node **right_half_head) {
+        list_node *fast_ptr, *slow_ptr;
+
+        slow_ptr = current;
+        fast_ptr = current->next;
+
+        while (fast_ptr != nullptr) {
+            fast_ptr = fast_ptr->next;
+            if (fast_ptr != nullptr) {
+                slow_ptr = slow_ptr->next;
+                fast_ptr = fast_ptr->next;
+            }
+        }
+
+        *left_half_head = current;
+        *right_half_head = slow_ptr->next;
+        slow_ptr->next = nullptr;
+    }
+
+    /* Merges 2 lists and returns the new head.  */
+    template<typename T>
+    template<class Compare>
+    list_t::list_node *list<T>::_merge_sorted(list_node *left_list_head, list_node *right_list_head, Compare comp) {
+        list_node *sorted_list_head, *sorted_current, *left_current, *right_current, *remaining;
+
+        left_current = left_list_head;
+        right_current = right_list_head;
+        if (right_list_head == nullptr) {
+            sorted_list_head = left_list_head;
+        } else {
+            if (comp(left_current->data, right_current->data)) {
+                sorted_list_head = left_current;
+                left_current = left_current->next;
+            } else {
+                sorted_list_head = right_current;
+                right_current = right_current->next;
+            }
+        }
+
+        /* Connect nodes in a sorted way.  */
+        sorted_current = sorted_list_head;
+        while (left_current != nullptr && right_current != nullptr) {
+            if (comp(left_current->data, right_current->data)) {
+                sorted_current->next = left_current;
+                left_current->previous = sorted_current;
+                left_current = left_current->next;
+            } else {
+                sorted_current->next = right_current;
+                right_current->previous = sorted_current;
+                right_current = right_current->next;
+            }
+            sorted_current = sorted_current->next;
+        }
+
+        /* Connect remaining nodes.  */
+        remaining = left_current ? left_current : right_current;
+        sorted_current->next = remaining;
+        /* Connect new head to the last node of the list.  */
+        sorted_list_head->previous = remaining->previous;
+        remaining->previous = sorted_current;
+
+        return sorted_list_head;
     }
 }
