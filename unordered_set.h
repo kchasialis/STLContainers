@@ -217,7 +217,6 @@ namespace adt {
         void _check_load_factor(uint64_t hash, size_type &pos);
         const key_type &_get_slot_key(internal_ptr slot);
         
-        find_insert_info _find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash); 
         std::pair<iterator, bool> _handle_elem_found(const iterator &it, to_ignore obj);
         std::pair<iterator, bool> _handle_elem_found(const iterator &it, to_delete obj);
         std::pair<iterator, bool> _handle_elem_not_found(const iterator &it);
@@ -391,11 +390,6 @@ namespace adt {
     template<typename Key, class Hash, class Eq>
     uset_t::hash_info unordered_set<Key, Hash, Eq>::_get_hash_info(const key_type &key) {
         return _hash_get_hash_info<>(this, key);
-    }
-
-    template<typename Key, class Hash, class Eq>
-    uset_t::find_insert_info unordered_set<Key, Hash, Eq>::_find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash) {
-        return _hash_find_or_prepare_insert<>(this, key, pos, h2_hash);
     }
 
     template<typename Key, class Hash, class Eq>

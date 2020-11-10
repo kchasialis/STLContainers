@@ -49,6 +49,8 @@ namespace adt {
             multiset_node() : data(), next(nullptr) {}
             multiset_node(const value_type &_data) : data(_data), next(nullptr) {}
             multiset_node(value_type &&_data) : data(_data), next(nullptr) {}
+            template<typename... Args>
+            multiset_node(Args&&... args) : data(std::forward<Args>(args)...), next(nullptr) {}
             multiset_node(const multiset_node &other) = default;
             multiset_node(multiset_node &&other) = default;
         };
@@ -92,6 +94,7 @@ namespace adt {
             iterator &operator=(const iterator &rhs) = default;
             iterator &operator=(internal_ptr *ptr) {
                 this->_ptr = ptr;
+                this->_it = _ptr ? *_ptr : nullptr;
                 return *this;
             }
 
@@ -136,7 +139,7 @@ namespace adt {
             internal_ptr _it;
 
             iterator(internal_ptr *ptr = nullptr) : _ptr(ptr) {
-                if (ptr != nullptr) _it = *_ptr;
+                _it = _ptr ? *_ptr : nullptr;
             }
         };
 
@@ -226,17 +229,16 @@ namespace adt {
         hash_info _get_hash_info(const key_type &key);
         void _check_load_factor(uint64_t hash, size_type &pos);
         const key_type &_get_slot_key(internal_ptr slot);
-        
-        find_insert_info _find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash);
-        iterator _handle_elem_found(const iterator &it, const value_type &val);
-        iterator _handle_elem_found(const iterator &it, value_type &&val);
-        iterator _handle_elem_found(const iterator &it, internal_ptr new_node);
-        iterator _handle_elem_not_found(const iterator &it);
-        
+
         iterator _add_to_list(const iterator &it, internal_ptr new_node);
         internal_ptr _construct_new_element(const_reference val);
         internal_ptr _construct_new_element(value_type &&val);
         internal_ptr _construct_new_element(internal_ptr val);
+
+        iterator _handle_elem_found(const iterator &it, const value_type &val);
+        iterator _handle_elem_found(const iterator &it, value_type &&val);
+        iterator _handle_elem_found(const iterator &it, internal_ptr new_node);
+        iterator _handle_elem_not_found(const iterator &it);
 
         size_type _delete_all_slots(size_type pos);
         size_type _delete_slot(size_type pos);
@@ -447,45 +449,11 @@ namespace adt {
     }
 
     template<typename Key, class Hash, class Eq>
-    const umultiset_t::key_type &unordered_multiset<Key, Hash, Eq>::_get_slot_key(internal_ptr slot) {
-        return slot->data;
-    }
-
-    template<typename Key, class Hash, class Eq>
-    umultiset_t::find_insert_info unordered_multiset<Key, Hash, Eq>::_find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash) {
-        return _hash_find_or_prepare_insert<>(this, key, pos, h2_hash);
-    }
-
-    template<typename Key, class Hash, class Eq>
     umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::_add_to_list(const iterator &it, internal_ptr new_node) {
-        multiset_node *head = *(it._ptr);
-
-        for (; head->next != nullptr ; head = head->next);
-
-        head->next = new_node;
+        new_node->next = *(it._ptr);
+        it = &new_node;
         _size++;
 
-        return {&(head->next)};
-    }
-
-    template<typename Key, class Hash, class Eq>
-    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::_handle_elem_found(const iterator &it, const_reference val) {
-        return _add_to_list(it, new multiset_node(val));
-    }
-
-    template<typename Key, class Hash, class Eq>
-    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::_handle_elem_found(const iterator &it, value_type &&val) {
-        return _add_to_list(it, new multiset_node(std::forward<value_type>(val)));
-    }
-
-    template<typename Key, class Hash, class Eq>
-    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::_handle_elem_found(const iterator &it, internal_ptr new_node) {
-        return _add_to_list(it, new_node);
-    }
-
-    template<typename Key, class Hash, class Eq>
-    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::_handle_elem_not_found(const iterator &it) {
-        _n_slots++;
         return it;
     }
 
@@ -503,6 +471,32 @@ namespace adt {
     template<typename Key, class Hash, class Eq>
     umultiset_t::internal_ptr unordered_multiset<Key, Hash, Eq>::_construct_new_element(internal_ptr val) {
         return val;
+    }
+
+    template<typename Key, class Hash, class Eq>
+    const umultiset_t::key_type &unordered_multiset<Key, Hash, Eq>::_get_slot_key(internal_ptr slot) {
+        return slot->data;
+    }
+
+    template<typename Key, class Hash, class Eq>
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::_handle_elem_found(const iterator &it, const value_type &val) {
+        return _add_to_list(it, new multiset_node(val));
+    }
+
+    template<typename Key, class Hash, class Eq>
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::_handle_elem_found(const iterator &it, value_type &&val) {
+        return _add_to_list(it, new multiset_node(std::forward<value_type>(val)));
+    }
+
+    template<typename Key, class Hash, class Eq>
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::_handle_elem_found(const iterator &it, internal_ptr new_node) {
+        return _add_to_list(it, new_node);
+    }
+
+    template<typename Key, class Hash, class Eq>
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::_handle_elem_not_found(const iterator &it) {
+        _n_slots++;
+        return it;
     }
 
     template<typename Key, class Hash, class Eq>

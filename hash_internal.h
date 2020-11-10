@@ -91,6 +91,32 @@ namespace hash_internal {
         }
     }
 
+    template<class Container>
+    container::find_insert_info _hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash) {
+        bool found_deleted;
+        size_t empty_pos, del_pos;
+
+        found_deleted = false;
+        while (1) {
+            if (is_empty_slot(cnt->_ctrls[pos])) {
+                empty_pos = pos;
+                break;
+            }
+            else if (is_deleted_slot(cnt->_ctrls[pos]) && !found_deleted) {
+                found_deleted = true;
+                del_pos = pos;
+            }
+            else if (cnt->_ctrls[pos] == h2_hash) {
+                if (cnt->_keq(cnt->_get_slot_key(cnt->_slots[pos]), key)) {
+                    return {container::iterator(&cnt->_slots[pos]), found_deleted, del_pos, empty_pos};
+                }
+            }
+            pos = mod(pos + 1, cnt->_capacity);
+        }
+
+        return {container::iterator(nullptr), found_deleted, del_pos, empty_pos};
+    }
+
     template<class Container, typename R, typename K, typename V, typename... Args>
     R _hash_insert(Container *cnt, const K &key, V val, Args &&... args) {
         size_t pos;
@@ -99,7 +125,7 @@ namespace hash_internal {
         assert(sizeof...(Args) <= 1);
 
         /* Try to find the key first.  */
-        auto p = cnt->_find_or_prepare_insert(key, info.pos, info.h2_hash);
+        auto p = _hash_find_or_prepare_insert<Container>(key, info.pos, info.h2_hash);
         /* If we found it, return early.  */
         if (p.it != nullptr) return cnt->_handle_elem_found(p.it, std::forward<Args>(args)...);
 
@@ -116,35 +142,6 @@ namespace hash_internal {
                 if (pos < cnt->_first_elem_pos) cnt->_first_elem_pos = pos;
 
                 return cnt->_handle_elem_not_found(container::iterator(&(cnt->_slots[pos])));
-            }
-            pos = mod(pos + 1, cnt->_capacity);
-        }
-    }
-
-    template<class Container, typename K, typename V>
-    container::mapped_type &_hash_map_index_operator(Container *cnt, const K &key, V val) {
-        size_t pos;
-        /* Hash the value and return information.  */
-        auto info = cnt->_get_hash_info(key);
-
-        /* Keys are unique, try and find it first.  */
-        auto p = cnt->_find_or_prepare_insert(key, info.pos, info.h2_hash);
-        /* If we found it, return early.  */
-        if (p.it != nullptr) return p.it->second;
-
-        pos = p.found_deleted ? p.del_pos : p.empty_pos;
-        cnt->_check_load_factor(info.hash, pos);
-
-        while (1) {
-            if (is_empty_or_deleted(cnt->_ctrls[pos])) {
-                cnt->_ctrls[pos] = info.h2_hash;
-                cnt->_slots[pos] = cnt->_construct_new_element(std::forward<V>(val));
-                cnt->_size++;
-
-                /* Update first element position.  */
-                if (pos < cnt->_first_elem_pos) cnt->_first_elem_pos = pos;
-
-                return container::iterator(&cnt->_slots[pos])->second;
             }
             pos = mod(pos + 1, cnt->_capacity);
         }
@@ -288,31 +285,4 @@ namespace hash_internal {
             pos = mod(h1(hash, cnt->_ctrls), cnt->_capacity);
         }
     }
-
-    template<class Container>
-    container::find_insert_info _hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash) {
-        bool found_deleted;
-        size_t empty_pos, del_pos;
-
-        found_deleted = false;
-        while (1) {
-            if (is_empty_slot(cnt->_ctrls[pos])) {
-                empty_pos = pos;
-                break;
-            }
-            else if (is_deleted_slot(cnt->_ctrls[pos]) && !found_deleted) {
-                found_deleted = true;
-                del_pos = pos;
-            }
-            else if (cnt->_ctrls[pos] == h2_hash) {
-                if (cnt->_keq(cnt->_get_slot_key(cnt->_slots[pos]), key)) {
-                    return {container::iterator(&cnt->_slots[pos]), found_deleted, del_pos, empty_pos};
-                }
-            }
-            pos = mod(pos + 1, cnt->_capacity);
-        }
-
-        return {container::iterator(nullptr), found_deleted, del_pos, empty_pos};
-    }
-
 }

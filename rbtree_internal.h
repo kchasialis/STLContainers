@@ -33,26 +33,8 @@ namespace rbtree_internal {
         explicit rb_node(const rb_node &node) = default;
         explicit rb_node(rb_node &&node) = default;
 
-        rb_node &operator=(rb_node &&node) = default;
+        rb_node &operator=(const rb_node &node) = default;
     };
-
-    /* Red Black tree operations.  */
-    template<class Container>
-    rb_node<container::node_type> *_rbtree_copy(rb_node<container::node_type> *other_root) {
-        rb_node<container::node_type> *new_node;
-
-        if (other_root == nullptr) return nullptr;
-
-        new_node = new rb_node<container::node_type>(other_root->data);
-
-        new_node->left = _rbtree_copy<Container>(other_root->left);
-        if (new_node->left) new_node->left->parent = new_node;
-
-        new_node->right = _rbtree_copy<Container>(other_root->right);
-        if (new_node->right) new_node->right->parent = new_node;
-
-        return new_node;
-    }
 
     template<class Container>
     void _rbtree_destruct(rb_node<container::node_type> *tnode) {
@@ -301,15 +283,61 @@ namespace rbtree_internal {
         return current;
     }
 
+    template<typename Container, typename K, typename V>
+    rb_node<container::node_type> *_rbtree_bst_insert(Container *cnt, bool &added_new, const K &key, V val) {
+        rb_node<container::node_type> *new_node, *current;
+
+        if (cnt->empty()) {
+            added_new = true;
+            cnt->_root = cnt->_construct_new_element(std::forward<V>(val));
+            cnt->_sentinel->left = cnt->_root;
+            cnt->_root->parent = cnt->_sentinel;
+            return cnt->_root;
+        }
+
+        current = cnt->_root;
+        while (1) {
+
+            if (cnt->_less(key, cnt->_get_key(current))) {
+                if (current->_left != nullptr) {
+                    current = current->_left;
+                } else {
+                    added_new = true;
+                    new_node = cnt->_construct_new_element(std::forward<V>(val));
+                    current->left = new_node;
+                    new_node->parent = current;
+
+                    return new_node;
+                }
+            }
+            else if (cnt->_less(cnt->_get_key(current)), key) {
+                if (current->_right != nullptr) {
+                    current = current->_right;
+                } else {
+                    added_new = true;
+                    new_node = cnt->_construct_new_element(std::forward<V>(val));
+                    current->_right = new_node;
+                    new_node->_parent = current;
+
+                    return new_node;
+                }
+            }
+            else {
+                added_new = false;
+                return current;
+            }
+        }
+    }
+
     /* Container functions.  */
-    template<typename Container, typename R, typename V, typename... Args>
-    R _rbtree_insert(Container *cnt, V val, Args &&... args) {
+    template<class Container, typename R, typename K, typename V, typename... Args>
+    R _rbtree_insert(Container *cnt, const K &key, V val, Args &&... args) {
         rb_node<container::node_type> *current;
         bool added_new;
 
         assert(sizeof...(Args) <= 1);
 
-        current = cnt->_bst_insert(added_new, std::forward<V>(val));
+        current = _rbtree_bst_insert<Container, K, V>(added_new, std::forward<V>(val));
 
         if (!added_new) return cnt->_handle_elem_found(current, std::forward<Args>(args)...);
 
@@ -323,67 +351,20 @@ namespace rbtree_internal {
         return cnt->_handle_elem_not_found(current);
     }
 
-    template<typename Container, typename V>
-    rb_node<container::node_type> *_rbtree_bst_insert(Container *cnt, bool &added_new, V val) {
-        rb_node<container::node_type> *new_node, *current;
-
-        if (cnt->empty()) {
-            added_new = true;
-            cnt->_root = new rb_node<container::node_type>(std::forward<V>(val));
-            cnt->_sentinel = new rb_node<container::node_type>();
-            cnt->_sentinel->left = cnt->_root;
-            cnt->_root->parent = cnt->_sentinel;
-            return cnt->_root;
-        }
-
-        current = cnt->_root;
-        while (1) {
-            
-            if (cnt->_less(val, cnt->_get_data(current))) {
-                if (current->_left != nullptr) {
-                    current = current->_left;
-                } else {
-                    added_new = true;
-                    new_node = new rb_node<container::node_type>(std::forward<V>(val));
-                    current->left = new_node;
-                    new_node->parent = current;
-
-                    return new_node;
-                }
-            }
-            else if (_less(current->data, cnt->_get_data(current))) {
-                if (current->_right != nullptr) {
-                    current = current->_right;
-                } else {
-                    added_new = true;
-                    new_node = new rb_node<container::node_type>(std::forward<V>(val));
-                    current->_right = new_node;
-                    new_node->_parent = current;
-
-                    return new_node;
-                }
-            }
-            else {
-                added_new = false;
-                return current;
-            }
-        }        
-    }
-
     template<class Container>
-    std::pair<rb_node<container::node_type> *, container::size_type> _rbtree_erase(Container *cnt, rb_node<container::node_type> *current, rb_node<container::node_type> *successor) {
+    rb_node<container::node_type> * _rbtree_erase(Container *cnt, rb_node<container::node_type> *current, rb_node<container::node_type> *successor) {
         rb_node<container::node_type> *r_node, *parent_node;
 
-        /*If this node is not a leaf and has both children*/
+        /* If this node is not a leaf and has both children.  */
         if (current->left != nullptr && current->right != nullptr) {
-            /*Get the minimum value of the right subtree*/
+            /* Get the minimum value of the right subtree.  */
             current->data = std::move(successor->data);
             current = successor;
         }
 
         r_node = current->left != nullptr ? current->left : current->right;
 
-        /*If node has one children*/
+        /* If node has one child.  */
         if (r_node != nullptr) {
             r_node->parent = current->parent;
             parent_node = current->parent;
@@ -408,12 +389,6 @@ namespace rbtree_internal {
             }
         }
         else if (current->parent == nullptr) {
-            cnt->_size = 0;
-            delete cnt->_root;
-            delete cnt->_sentinel;
-            cnt->_root = nullptr;
-            cnt->_sentinel = nullptr;
-            
             return cnt->_root;
         }
         else {
@@ -444,10 +419,10 @@ namespace rbtree_internal {
         
         current = cnt->_root;        
         while (current) {
-            if (cnt->_less(key, cnt->_get_data(current))) {
+            if (cnt->_less(key, cnt->_get_key(current))) {
                 current = current->left;
             }
-            else if (cnt->_less(cnt->_get_data(current), key)) {
+            else if (cnt->_less(cnt->_get_key(current), key)) {
                 current = current->right;
             }
             else {
@@ -462,24 +437,13 @@ namespace rbtree_internal {
     rb_node<container::node_type> *_rbtree_find_bound(Container *cnt, rb_node<container::node_type> *tnode, const container::key_type &key) const {
         rb_node<container::node_type> *rnode;
 
-        if (tnode == nullptr) {
-            return nullptr;
-        }
+        if (tnode == nullptr) return nullptr;
 
-        if (cnt->_is_equal_key(cnt->_get_data(tnode), key)) {
-            return tnode;
-        }
+        if (cnt->_is_equal_key(cnt->_get_key(tnode), key)) return tnode;
 
-        if (cnt->_less(cnt->_get_data(tnode), key)) {
-            return _rbtree_find_bound<Container>(tnode->right, key);
-        }
+        if (cnt->_less(cnt->_get_key(tnode), key)) return _rbtree_find_bound<Container>(cnt, tnode->right, key);
 
-        rnode = _rbtree_find_bound<Container>(tnode->left, key);
+        rnode = _rbtree_find_bound<Container>(cnt, tnode->left, key);
         return rnode == nullptr ? tnode : rnode;
-    }
-
-    template<class Container>
-    bool _rbtree_is_equal_key(Container *cnt, const container::key_type &lhs, const container::key_type &rhs) {
-        return cnt->_less(lhs, rhs) || cnt->_less(rhs, lhs); 
     }
 }

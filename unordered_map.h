@@ -126,14 +126,9 @@ namespace adt {
             }
 
             const_reference operator*() const { return *(*this->_ptr); }
-            reference operator*() { return *(*(this->_ptr));
-            }
-            pointer operator->() {
-                return *(this->_ptr);
-            }
-            const_pointer operator->() const {
-                return *(this->_ptr);
-            }
+            reference operator*() { return *(*(this->_ptr)); }
+            pointer operator->() { return *(this->_ptr); }
+            const_pointer operator->() const { return *(this->_ptr); }
 
         private:
             internal_ptr *_ptr;
@@ -144,14 +139,12 @@ namespace adt {
         class const_iterator {
             friend class unordered_map;
             friend class iterator;
-            
             using internal_ptr = unordered_map::internal_ptr;
 
         public:
             using iterator_category = std::forward_iterator_tag;
             using value_type = unordered_map::value_type;
             using reference = unordered_map::const_reference;
-            using const_reference = unordered_map::const_reference;
             using pointer = unordered_map::const_pointer;
             using difference_type = unordered_map::difference_type;
 
@@ -206,10 +199,16 @@ namespace adt {
         hasher hash_function() const;
         key_equal key_eq() const;
 
+        /* Element lookup.  */
+        mapped_type &operator[](const key_type &key);
+        mapped_type &operator[](key_type &&k);
+        mapped_type &at(const key_type &key) noexcept(false);
+        const mapped_type &at(const key_type &key) const noexcept(false);
+
         /* Modifiers.  */
         std::pair<iterator, bool> insert(const value_type &val);
         template<class P>
-        std::pair<iterator, bool> insert(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type = enabler());
+        std::pair<iterator, bool> insert(P &&val, typename std::enable_if<std::is_constructible<P&&, value_type>::value, enabler>::type = enabler());
         template <class... Args>
         std::pair<iterator, bool> emplace(Args&&... args);
         iterator erase(const_iterator pos);
@@ -217,11 +216,7 @@ namespace adt {
         void clear() noexcept;
         void swap(unordered_map &other);
 
-        /* Element lookup.  */
-        mapped_type &operator[](const key_type &key);
-        mapped_type &operator[](key_type &&k);
-        mapped_type &at(const key_type &key) noexcept(false);
-        const mapped_type &at(const key_type &key) const noexcept(false);
+        /* Operations.  */
         iterator find(const key_type &key);
         const_iterator find(const key_type &key) const;
         size_type count(const key_type &key) const;
@@ -279,14 +274,13 @@ namespace adt {
         hash_info _get_hash_info(const key_type &key);
         const key_type &_get_slot_key(internal_ptr slot);
         
-        find_insert_info _find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash);
         std::pair<iterator, bool> _handle_elem_found(const iterator &it, to_ignore obj);
         std::pair<iterator, bool> _handle_elem_found(const iterator &it, to_delete obj);
         std::pair<iterator, bool> _handle_elem_not_found(const iterator &it);
 
-        internal_ptr _construct_new_element(const_reference val);
+        internal_ptr _construct_new_element(const value_type &val);
         template<class P>
-        internal_ptr _construct_new_element(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type = enabler());
+        internal_ptr _construct_new_element(P &&val, typename std::enable_if<std::is_constructible<P&&, value_type>::value, enabler>::type = enabler());
         internal_ptr _construct_new_element(internal_ptr val);
         internal_ptr _construct_new_element(const key_type &key);
         internal_ptr _construct_new_element(key_type &&key);
@@ -383,13 +377,40 @@ namespace adt {
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
+    umap::mapped_type &unordered_map<K, V, Hash, Eq>::operator[](const key_type &key) {
+        return (*((insert(std::make_pair(key,mapped_type()))).first)).second;
+    }
+
+    template<typename K, typename V, typename Hash, typename Eq>
+    umap::mapped_type &unordered_map<K, V, Hash, Eq>::operator[](key_type &&key) {
+        return (*((insert(std::make_pair(key,mapped_type()))).first)).second;
+    }
+
+    template<typename K, typename V, typename Hash, typename Eq>
+    umap::mapped_type &unordered_map<K, V, Hash, Eq>::at(const key_type &key) noexcept(false) {
+        iterator it = find(key);
+
+        /* If we found it, return the mapped value.  */
+        if (it._ptr != &_slots[_capacity]) {
+            return it->second;
+        }
+
+        throw std::out_of_range("Key is not present on the map.");
+    }
+
+    template<typename K, typename V, typename Hash, typename Eq>
+    const umap::mapped_type &unordered_map<K, V, Hash, Eq>::at(const key_type &key) const noexcept(false) {
+        return const_cast<unordered_map<K, V, Hash, Eq>*>(this)->at(key);
+    }
+
+    template<typename K, typename V, typename Hash, typename Eq>
     std::pair<umap::iterator, bool> unordered_map<K, V, Hash, Eq>::insert(const_reference val) {
         return _hash_insert<unordered_map<K, V, Hash, Eq>, std::pair<iterator, bool>, key_type, const_reference>(this, val.first, val, to_ignore());
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
     template<class P>
-    std::pair<umap::iterator, bool> unordered_map<K, V, Hash, Eq>::insert(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type) {
+    std::pair<umap::iterator, bool> unordered_map<K, V, Hash, Eq>::insert(P &&val, typename std::enable_if<std::is_constructible<P&&, value_type>::value, enabler>::type) {
         return _hash_insert<unordered_map<K, V, Hash, Eq>, std::pair<iterator, bool>, key_type, P&&>(this, val.first, std::forward<P>(val), to_ignore());
     }
 
@@ -419,33 +440,6 @@ namespace adt {
     template<typename K, typename V, typename Hash, typename Eq>
     void unordered_map<K, V, Hash, Eq>::swap(unordered_map &other) {
         this->swap(*this, other);
-    }
-
-    template<typename K, typename V, typename Hash, typename Eq>
-    umap::mapped_type &unordered_map<K, V, Hash, Eq>::operator[](const key_type &key) {
-        return _hash_map_index_operator<unordered_map<K, V, Hash, Eq>, key_type, const key_type&>(this, key, key);
-    }
-
-    template<typename K, typename V, typename Hash, typename Eq>
-    umap::mapped_type &unordered_map<K, V, Hash, Eq>::operator[](key_type &&key) {
-        return _hash_map_index_operator<unordered_map<K, V, Hash, Eq>, key_type, key_type&&>(this, key, std::forward<key_type>(key));
-    }
-
-    template<typename K, typename V, typename Hash, typename Eq>
-    umap::mapped_type &unordered_map<K, V, Hash, Eq>::at(const key_type &key) noexcept(false) {
-        iterator it = find(key);
-
-        /* If we found it, return the mapped value.  */
-        if (it._ptr != &_slots[_capacity]) {
-            return it->second;
-        }
-
-        throw std::out_of_range("Key is not present on the map.");
-    }
-
-    template<typename K, typename V, typename Hash, typename Eq>
-    const umap::mapped_type &unordered_map<K, V, Hash, Eq>::at(const key_type &key) const noexcept(false) {
-        return const_cast<unordered_map<K, V, Hash, Eq>*>(this)->at(key);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
@@ -493,11 +487,6 @@ namespace adt {
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umap::find_insert_info unordered_map<K, V, Hash, Eq>::_find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash) {
-        return _hash_find_or_prepare_insert<>(this, key, pos, h2_hash);
-    }
-
-    template<typename K, typename V, typename Hash, typename Eq>
     std::pair<umap::iterator, bool> unordered_map<K, V, Hash, Eq>::_handle_elem_found(const iterator &it, to_ignore obj) {
         return {it, false};
     }
@@ -525,7 +514,7 @@ namespace adt {
 
     template<typename K, typename V, typename Hash, typename Eq>
     template<class P>
-    umap::internal_ptr unordered_map<K, V, Hash, Eq>::_construct_new_element(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type) {
+    umap::internal_ptr unordered_map<K, V, Hash, Eq>::_construct_new_element(P &&val, typename std::enable_if<std::is_constructible<P&&, value_type>::value, enabler>::type) {
         return new value_type(std::forward<P>(val));
     }
 

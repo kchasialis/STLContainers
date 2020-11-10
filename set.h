@@ -9,17 +9,17 @@
 
 #include "rbtree_internal.h"
 
-#define set_t set_t
+#define set_t typename set<Key, Less>
 
 using namespace rbtree_internal;
 
 namespace adt {
 
-    template<typename T, class Less = std::less<T>>
+    template<typename Key, class Less = std::less<Key>>
     class set {
-    private:
-        using key_type = T;
-        using value_type = T;
+    public:
+        using key_type = Key;
+        using value_type = Key;
         using key_compare = Less;
         using value_compare = Less;
         using reference = value_type&;
@@ -32,12 +32,34 @@ namespace adt {
         using const_iterator = iterator;
         class reverse_iterator;
         using const_reverse_iterator = reverse_iterator;
+
+    private:
         using node_type = value_type;
         using internal_ptr = rb_node<node_type>*;
 
+        internal_ptr _root;
+        internal_ptr _sentinel;
+        size_type _size;
+        key_compare _less;
+
+        template<typename U>
+        struct handle_return_overload {
+            typedef U tag_type;
+            internal_ptr ptr;
+
+            handle_return_overload() : ptr(nullptr) {}
+            explicit handle_return_overload(value_type *_ptr) : ptr(_ptr) {}
+        };
+
+        struct tag_ignore{};
+        struct tag_delete{};
+
+        typedef handle_return_overload<tag_ignore> to_ignore;
+        typedef handle_return_overload<tag_delete> to_delete;
+
+    public:
         class iterator {
             friend class set;
-
             using internal_ptr = set::internal_ptr;
 
         public:
@@ -161,13 +183,11 @@ namespace adt {
             bool operator!=(const reverse_iterator &rhs) const { return !(*this == rhs); }
             bool operator!=(internal_ptr ptr) const { return !(*this == ptr); }
 
-            /* Inorder successor algorithm. */
             reverse_iterator &operator++() {
                 --_it;
                 return *this;
             }
             reverse_iterator operator++(int) { return _it--; }
-            /* Inorder predecessor algorithm. */
             reverse_iterator &operator--() {
                 ++_it;
                 return *this;
@@ -187,18 +207,12 @@ namespace adt {
             reverse_iterator(internal_ptr ptr) : _it(ptr) {}
         };
 
-        internal_ptr _root;
-        internal_ptr _sentinel;
-        Less _less;
-        size_t _size;
-
-    public:
         /* Constructors/Destructors.  */
-        set() noexcept;
-        explicit set(const set &rhs) noexcept;
-        set(set&& rhs) noexcept;
+        set(const key_compare &keq = key_compare()) noexcept;
+        explicit set(const set &other) noexcept;
+        set(set&& other) noexcept;
         ~set();
-        set& operator=(set rhs);
+        set &operator=(set rhs);
 
         /* Iterators.  */
         iterator begin() noexcept;
@@ -248,48 +262,363 @@ namespace adt {
             using std::swap;
 
             swap(lhs._root, rhs._root);
-            swap(lhs._end_node, rhs._end_node);
+            swap(lhs._sentinel, rhs._sentinel);
             swap(lhs._less, rhs._less);
             swap(lhs._size, rhs._size);
         }
 
     private:
-        internal_ptr _bst_insert(bool &added_new, const value_type &val);
-        internal_ptr _bst_insert(bool &added_new, value_type &&val);
-        internal_ptr _erase(internal_ptr current, internal_ptr successor);
+        internal_ptr _copy_tree(internal_ptr other_root);
+        internal_ptr _construct_new_element(const value_type &val);
+        internal_ptr _construct_new_element(value_type &&val);
+        internal_ptr _construct_new_element(internal_ptr val);
+        std::pair<iterator, bool> _handle_elem_found(internal_ptr ptr, to_ignore obj);
+        std::pair<iterator, bool> _handle_elem_found(internal_ptr ptr, to_delete obj);
+        std::pair<iterator, bool> _handle_elem_not_found(internal_ptr ptr);
+        key_type &_get_key(rb_node<node_type> *tnode);
         bool _is_equal_key(const key_type &lhs_key, const key_type &rhs_key) const;
+        std::pair<rb_node<node_type> *, size_type> _erase(const_iterator pos);
     };
 
     /* Implementation.  */
 
     /* Public member functions.  */
-    template<typename T, class Less>
-    set<T, Less>::set() noexcept : _root(nullptr), _size(0) {
+    template<typename Key, class Less>
+    set<Key, Less>::set(const key_compare &keq) noexcept : _root(nullptr), _size(0), _less(keq) {
         _sentinel = new rb_node<node_type>();
     }
 
-    template<typename T, class Less>
-    set<T, Less>::set(const set &other) noexcept {
-        /* Create an exact copy of this set, O(n).  */
+    template<typename Key, class Less>
+    set<Key, Less>::set(const set &other) noexcept {
+        if (this != &other) {
+            /* Create an exact copy of this set, O(n).  */
+            _root = _copy_tree(other._root);
+            _sentinel = new rb_node<node_type>();
+            _sentinel->left = _root;
+            _root->parent = _sentinel;
+            _less = other._less;
+        }
     }
 
-    template<typename T, class Less>
-    set<T, Less>::set(set &&other) noexcept : set() {
+    template<typename Key, class Less>
+    set<Key, Less>::set(set &&other) noexcept : set() {
         swap(*this, other);
     }
 
-    template<typename T, class Less>
-    set<T, Less>& set<T, Less>::operator=(set rhs) {
+    template<typename Key, class Less>
+    set<Key, Less>::~set() {
+        if (_root != nullptr) {
+            clear();
+            delete _sentinel;
+        } else {
+            if (_sentinel) delete _sentinel;
+        }
+    }
+
+    template<typename Key, class Less>
+    set<Key, Less>& set<Key, Less>::operator=(set rhs) {
         /* Copy and swap idiom, let the compiler handle the copy of the argument.  */
         swap(*this, rhs);
 
         return *this;
     }
 
-    template<typename T, class Less>
-    set<T, Less>::~set() {
+    template<typename Key, class Less>
+    set_t::iterator set<Key, Less>::begin() noexcept {
+        internal_ptr current = _root;
+
+        if (current) {
+            while (current->left != nullptr) {
+                current = current->left;
+            }
+        }
+
+        return iterator(current);
+    }
+
+    template<typename Key, class Less>
+    set_t::const_iterator set<Key, Less>::begin() const noexcept {
+        return const_cast<set<Key, Less>*>(this)->begin();
+    }
+
+    template<typename Key, class Less>
+    set_t::iterator set<Key, Less>::end() noexcept {
+        return iterator(_sentinel);
+    }
+
+    template<typename Key, class Less>
+    set_t::const_iterator set<Key, Less>::end() const noexcept {
+        return const_cast<set<Key, Less>*>(this)->end();
+    }
+
+    template<typename Key, class Less>
+    set_t::reverse_iterator set<Key, Less>::rbegin() noexcept {
+        rb_node<node_type> *current = _root;
+
+        if (current) {
+            while (current->right != nullptr) {
+                current = current->right;
+            }
+        }
+
+        return reverse_iterator(current);
+    }
+
+    template<typename Key, class Less>
+    set_t::const_reverse_iterator set<Key, Less>::rbegin() const {
+        return const_cast<set<Key, Less>*>(this)->rbegin();
+    }
+
+    template<typename Key, class Less>
+    set_t::reverse_iterator set<Key, Less>::rend() noexcept {
+        return reverse_iterator(_sentinel);
+    }
+
+    template<typename Key, class Less>
+    set_t::const_reverse_iterator set<Key, Less>::rend() const noexcept {
+        return const_cast<set<Key, Less>*>(this)->rend();
+    }
+
+    template<typename Key, class Less>
+    set_t::const_iterator set<Key, Less>::cbegin() const noexcept {
+        return const_cast<set<Key, Less>*>(this)->begin();
+    }
+
+    template<typename Key, class Less>
+    set_t::const_iterator set<Key, Less>::cend() const noexcept {
+        return const_cast<set<Key, Less>*>(this)->end();
+    }
+
+    template<typename Key, class Less>
+    set_t::const_reverse_iterator set<Key, Less>::crbegin() const noexcept {
+        return const_cast<set<Key, Less>*>(this)->rbegin();
+    }
+
+    template<typename Key, class Less>
+    set_t::const_reverse_iterator set<Key, Less>::crend() const noexcept {
+        return const_cast<set<Key, Less>*>(this)->rend();
+    }
+
+    template<typename Key, class Less>
+    bool set<Key, Less>::empty() const noexcept {
+        return _size == 0;
+    }
+
+    template<typename Key, class Less>
+    set_t::size_type set<Key, Less>::size() const noexcept {
+        return _size;
+    }
+
+    template<typename Key, class Less>
+    set_t::key_compare set<Key, Less>::key_comp() const {
+        return _less;
+    }
+
+    template<typename Key, class Less>
+    set_t::value_compare set<Key, Less>::value_comp() const {
+        return _less;
+    }
+
+    template<typename Key, class Less>
+    std::pair<set_t::iterator, bool> set<Key, Less>::insert(const value_type &val) {
+        return _rbtree_insert<set<Key, Less>, std::pair<iterator, bool>, key_type, const value_type&>(this, val, val, to_ignore());
+    }
+
+    template<typename Key, class Less>
+    std::pair<set_t::iterator, bool> set<Key, Less>::insert(value_type &&val) {
+        return _rbtree_insert<set<Key, Less>, std::pair<iterator, bool>, key_type, value_type&&>(this, val, std::forward<value_type>(val), to_ignore());
+    }
+
+    template<typename Key, class Less>
+    template<class... Args>
+    std::pair<set_t::iterator, bool> set<Key, Less>::emplace(Args &&... args) {
+        internal_ptr val = new rb_node<node_type>(std::forward<Args>(args)...);
+        return _rbtree_insert<set<Key, Less>, std::pair<iterator, bool>, key_type, internal_ptr>(this, val->data, val, to_delete(val));
+    }
+
+    template<typename Key, class Less>
+    set_t::iterator set<Key, Less>::erase(const_iterator pos) {
+        return _erase(pos).first;
+    }
+
+    template<typename Key, class Less>
+    set_t::size_type set<Key, Less>::erase(const value_type &val) {
+        return _erase(find(val)).second;
+    }
+
+    template<typename Key, class Less>
+    set_t::iterator set<Key, Less>::erase(const_iterator first, const_iterator last) {
+        auto it = first;
+
+        while (it != last) it = erase(it);
+
+        return it;
+    }
+
+    template<typename Key, class Less>
+    void set<Key, Less>::clear() noexcept {
+        _rbtree_destruct<set<Key, Less>>(_root);
+    }
+
+    template<typename Key, class Less>
+    void set<Key, Less>::swap(set &other) {
+        swap(*this, other);
+    }
+
+    template<typename Key, class Less>
+    set_t::iterator set<Key, Less>::find(const key_type &key) {
+        return _rbtree_find<set<Key, Less>>(this, key);
+    }
+
+    template<typename Key, class Less>
+    set_t::const_iterator set<Key, Less>::find(const key_type &key) const {
+        return const_cast<set<Key, Less>*>(this)->find(key);
+    }
+
+    template<typename Key, class Less>
+    set_t::size_type set<Key, Less>::count(const key_type &key) const {
+        return find(key)._ptr != _sentinel ? 1 : 0;
+    }
+
+    template<typename Key, class Less>
+    set_t::iterator set<Key, Less>::lower_bound(const key_type &key) {
+        internal_ptr bound = _rbtree_find_bound<set<Key, Less>>(this, _root, key);
+
+        return bound == nullptr ? end() : iterator(bound);
+    }
+
+    template<typename Key, class Less>
+    set_t::const_iterator set<Key, Less>::lower_bound(const key_type &key) const {
+        return const_cast<set<Key, Less>*>(this)->lower_bound(key);
+    }
+
+    template<typename Key, class Less>
+    set_t::iterator set<Key, Less>::upper_bound(const key_type &key) {
+        internal_ptr bound = _rbtree_find_bound<set<Key, Less>>(this, _root, key);
+
+        if (bound == nullptr) {
+            return end();
+        } else {
+            if (_is_equal_key(bound->data, key)) {
+                return iterator(_rbtree_successor<set<Key, Less>>(bound));
+            } else {
+                return iterator(bound);
+            }
+        }
+    }
+
+    template<typename Key, class Less>
+    set_t::const_iterator set<Key, Less>::upper_bound(const key_type &key) const {
+        return const_cast<set<Key, Less>*>(this)->upper_bound(key);
+    }
+
+    template<typename Key, class Less>
+    std::pair<set_t::iterator, set_t::iterator> set<Key, Less>::equal_range(const key_type &key) {
+        auto first = find(key);
+        auto second(first);
+
+        return {first, ++second};
+    }
+
+    template<typename Key, class Less>
+    std::pair<set_t::const_iterator, set_t::const_iterator> set<Key, Less>::equal_range(const key_type &key) const {
+        return const_cast<set<Key, Less>*>(this)->equal_range(key);
     }
 
     /* Private member functions.  */
+    template<typename Key, class Less>
+    set_t::internal_ptr set<Key, Less>::_copy_tree(internal_ptr other_root) {
+        internal_ptr new_node;
+
+        if (other_root == nullptr) return nullptr;
+
+        new_node = new rb_node<node_type>(other_root->data);
+
+        new_node->left = _copy_tree(other_root->left);
+        if (new_node->left) new_node->left->parent = new_node;
+
+        new_node->right = _copy_tree(other_root->right);
+        if (new_node->right) new_node->right->parent = new_node;
+
+        return new_node;
+    }
+
+    template<typename Key, class Less>
+    set_t::internal_ptr set<Key, Less>::_construct_new_element(const value_type &val) {
+        return new rb_node<node_type>(val);
+    }
+
+    template<typename Key, class Less>
+    set_t::internal_ptr set<Key, Less>::_construct_new_element(value_type &&val) {
+        return new rb_node<node_type>(std::forward<node_type>(val));
+    }
+
+    template<typename Key, class Less>
+    set_t::internal_ptr set<Key, Less>::_construct_new_element(internal_ptr val) {
+        return val;
+    }
+
+    template<typename Key, class Less>
+    std::pair<set_t::iterator, bool> set<Key, Less>::_handle_elem_found(internal_ptr ptr, to_ignore obj) {
+        return {ptr, false};
+    }
+
+    template<typename Key, class Less>
+    std::pair<set_t::iterator, bool> set<Key, Less>::_handle_elem_found(internal_ptr ptr, to_delete obj) {
+        delete obj.ptr;
+        return {ptr, false};
+    }
+
+    template<typename Key, class Less>
+    std::pair<set_t::iterator, bool> set<Key, Less>::_handle_elem_not_found(internal_ptr ptr) {
+        return {ptr, true};
+    }
+
+    template<typename Key, class Less>
+    set_t::key_type &set<Key, Less>::_get_key(rb_node<node_type> *tnode) {
+        return tnode->data;
+    }
+
+    template<typename Key, class Less>
+    bool set<Key, Less>::_is_equal_key(const key_type &lhs_key, const key_type &rhs_key) const {
+        return _less(lhs_key, rhs_key) || _less(rhs_key, lhs_key);
+    }
+
+    template<typename Key, class Less>
+    std::pair<rb_node<set_t::node_type> *, set_t::size_type> set<Key, Less>::_erase(const_iterator pos) {
+        internal_ptr save, successor, next_elem_ptr, erase_ptr;
+        size_t count = 0;
+
+        if (pos != end()) {
+            save = _sentinel;
+            _root->parent = nullptr;
+
+            successor = _rbtree_successor<set<Key, Less>>(pos._ptr);
+            erase_ptr = _rbtree_erase<set<Key, Less>>(this, pos._ptr, successor);
+
+            if (erase_ptr != _root) {
+                next_elem_ptr = erase_ptr == successor ? pos._ptr : successor;
+
+                delete erase_ptr;
+
+                /* Update the sentinel node.  */
+                _sentinel = save;
+                _root->parent = _sentinel;
+                _sentinel->left = _root;
+                --_size;
+                count++;
+
+                return {successor != nullptr ? next_elem_ptr : end(), count};
+            }
+            else {
+                delete _root;
+                _sentinel->left = nullptr;
+                _root = nullptr;
+                _size = 0;
+            }
+        }
+
+        return {end(), count};
+    }
 }
 

@@ -2,989 +2,685 @@
 
 #include <memory>
 
+#define multiset_t typename multiset<Key, Less>
+
 namespace adt {
     
-    /*On MultiSet its possible to have multiple keys with the same value, we need them on the same node*/
-    template<typename T>
-    struct DataNode {
-        T data;
-        std::shared_ptr<DataNode<T>> next;
-        std::shared_ptr<DataNode<T>> previous; 
-        DataNode() : data(0), next(nullptr), previous(nullptr) {}
-        explicit DataNode(T&& val) : data(std::forward<T>(val)), next(nullptr), previous(nullptr) {}
-        explicit DataNode(const T& val) : data(val), next(nullptr), previous(nullptr) {}
-        template<typename... Args>
-        explicit DataNode(Args &&... args) noexcept : data(std::forward<Args>(args)...), next(nullptr), previous(nullptr) {}
-    };
-    
-    template<typename T>
-    struct DataList {
-        std::shared_ptr<DataNode<T>> head;
-        std::shared_ptr<DataNode<T>> tail;
-        size_t size;
-        ~DataList() {
-            /*Break shared_ptr cycle*/
-            std::shared_ptr<DataNode<T>> current = head;
-            for (size_t i = 0 ; i < size ; i++) {
-                current->next = nullptr;
-            }
-        }
-        DataList() : head(nullptr), tail(nullptr), size(0) {}
-
-        void __push_back(std::shared_ptr<DataNode<T>>& new_node) {
-            if (this->head != nullptr) {
-                new_node->previous = this->tail;
-                this->tail = this->tail->next = new_node;
-            } else {
-                this->tail = this->head  = new_node;
-            }
-            ++this->size;
-        }
-
-        void _pop_front() {
-            if (this->head) {
-                this->head = this->head->next;
-                --this->size;
-            }
-            if (this->size == 0) {
-                this->tail = nullptr;
-            }
-        }
-
-        void _push_back(const T& data) {
-            std::shared_ptr<DataNode<T>> tmp(new DataNode<T>(data));
-            __push_back(tmp);
-        }
-
-        void _push_back(T&& data) {
-            std::shared_ptr<DataNode<T>> tmp(new DataNode<T>(std::forward<T>(data)));
-            __push_back(tmp);    
-        }
-    };
-
-    template<typename T>
-    class multiset_iterator;
-
-    template<typename T, class Less = std::less<T>>
-    class multiset;
-    
-    template<typename T>
-    class MultiSetNode {
-        friend class multiset<T>;
-    private:
-        enum {
-            RED,
-            BLACK
-        };
-        
-        DataList<T> data_list;
-        MultiSetNode *left;
-        MultiSetNode *right;
-        MultiSetNode *parent;
-        int8_t color;
-
-        MultiSetNode();
-        explicit MultiSetNode(const T& data);
-        explicit MultiSetNode(T&& data);
-        explicit MultiSetNode(const MultiSetNode& node) = default;
-        explicit MultiSetNode(MultiSetNode&& node) noexcept = default;
-
-        MultiSetNode& operator=(MultiSetNode&& node) noexcept = default;
-    };
-
-    template<typename T>
-    class multiset_iterator : public std::iterator<std::bidirectional_iterator_tag, T, std::ptrdiff_t , T*, T&> {
-        friend class multiset<T>;
-    public:
-        using const_data_reference = const T&;
-        using const_data_pointer = const T*;
-        
-        explicit multiset_iterator(MultiSetNode<T>* _ptr = nullptr) : ptr(_ptr) {
-            if (_ptr) {
-                this->dataptr = _ptr->data_list.head.get();
-            }
-        }
-        multiset_iterator(const multiset_iterator<T>& other) : ptr(other.ptr), dataptr(other.dataptr) {}
-        multiset_iterator<T>& operator=(const multiset_iterator<T>& other) {
-            this->ptr = other.ptr;
-            this->dataptr = other.dataptr; 
-            return *this;
-        }
-        multiset_iterator<T>& operator=(MultiSetNode<T>* _ptr) {
-            if (_ptr == nullptr) {
-                return *this;
-            }
-            this->ptr = _ptr;
-            this->dataptr = _ptr->data_list.head.get();
-            return *this;
-        }
-        bool operator==(const multiset_iterator<T>& rhs) const {
-            return this->ptr == rhs.ptr;
-        }
-        bool operator!=(const multiset_iterator<T>& rhs) const {
-            return !(*this == rhs);
-        }
-        const_data_reference operator*() {
-            return this->dataptr->data;
-        }
-        const_data_pointer operator->() {
-            return &(this->dataptr->data);
-        }
-        /*Inorder successor algorithm*/
-        multiset_iterator<T> operator++() {
-            if (this->ptr == nullptr) {
-                return multiset_iterator<T>();
-            }
-            /*First, check if the pointer to internal list has no other elements*/
-            if (this->dataptr->next.get() != nullptr) {
-                this->dataptr = this->dataptr->next.get();
-                return *this;
-            }
-
-            MultiSetNode<T>* current;
-            if (this->ptr->right) {
-                current = this->ptr->right;
-                while (current->left != nullptr) {
-                    current = current->left;
-                }
-            }
-            else {
-                current = this->ptr->parent;
-                while (current != nullptr && this->ptr == current->right) {
-                    this->ptr = current;
-                    current = current->parent;
-                }
-            }
-
-            this->ptr = current;
-            this->dataptr = this->ptr != nullptr ? this->ptr->data_list.head.get() : nullptr;
-            return *this;
-        }
-        multiset_iterator<T> operator++(int) {
-            if (this->ptr == nullptr) {
-                return multiset_iterator<T>();
-            }
-
-            multiset_iterator<T> tmp(*this);
-            ++(*this);
-            return tmp;
-        }
-        /*Inorder predecessor algorithm*/
-        multiset_iterator<T> operator--() {
-            if (this->ptr == nullptr) {
-                return multiset_iterator<T>();
-            }
-
-            if (this->dataptr->previous != nullptr) {
-                this->dataptr = this->dataptr->previous.get();
-                return *this;
-            }
-
-            MultiSetNode<T>* current;
-            if (this->ptr->left) {
-                current = this->ptr->left;
-                while (current->right != nullptr) {
-                    current = current->right;
-                }
-            }
-            else {
-                current = this->ptr->parent;
-                while (current != nullptr && this->ptr == current->left) {
-                    this->ptr = current;
-                    current = current->parent;
-                }
-            }
-
-            this->ptr = current;
-            this->dataptr = this->ptr != nullptr ? this->ptr->data_list.head.get() : nullptr;
-            return *this;
-        }
-        multiset_iterator<T> operator--(int) {
-            if (this->ptr == nullptr) {
-                return multiset_iterator<T>();
-            }
-
-            multiset_iterator<T> tmp(*this);
-            --(*this);
-            return tmp;
-        }
-        void swap(multiset_iterator<T>& lhs, multiset_iterator<T>& rhs) {
-            std::swap(lhs, rhs);
-        }
-    private:
-        MultiSetNode<T>* ptr;
-        DataNode<T> *dataptr;
-    };
-
-    template<typename T, class Less>
+    template<typename Key, class Less = std::less<Key>>
     class multiset {
-    private:
-        enum {
-            RED,
-            BLACK
-        };
-        enum SetBalanceType {
-            DELETION,
-            INSERTION
-        };
-
-        MultiSetNode<T> *root;
-        MultiSetNode<T> *endNode;
-        Less less;
-        size_t _size;
-        void rotate_left(MultiSetNode<T> *);
-        void rotate_right(MultiSetNode<T> *);
-        MultiSetNode<T>* bst_insert(bool&, const T&);
-        MultiSetNode<T>* bst_insert(bool&, T&&);
-        MultiSetNode<T>* _copy_tree(MultiSetNode<T>*);
-        MultiSetNode<T>* _remove(MultiSetNode<T> *, MultiSetNode<T>*);
-        inline bool _is_equal_key(const T& nodeval, const T& val);
-        MultiSetNode<T>* _find_bound(MultiSetNode<T> *_root, const T &val);
-        void restore_balance(MultiSetNode<T>*, int8_t type);
-        void tree_destroy(MultiSetNode<T> *);
     public:
-        multiset() noexcept;
-        multiset(const multiset& rhs) noexcept;
-        multiset(multiset&& rhs) noexcept;
+        using key_type = Key;
+        using value_type = Key;
+        using key_compare = Less;
+        using value_compare = Less;
+        using reference = value_type&;
+        using const_reference = const value_type&;
+        using pointer = value_type*;
+        using const_pointer = const value_type*;
+        using difference_type = std::ptrdiff_t;
+        using size_type = std::size_t;
+        class iterator;
+        using const_iterator = iterator;
+        class reverse_iterator;
+        using const_reverse_iterator = reverse_iterator;
+
+    private:
+        struct multiset_node {
+            value_type data;
+            multiset_node *next;
+            multiset_node *previous;
+
+            multiset_node() : data(), next(nullptr), previous(nullptr) {}
+            multiset_node(const value_type &_data) : data(_data), next(nullptr), previous(nullptr) {}
+            multiset_node(value_type &&_data) : data(_data), next(nullptr), previous(nullptr) {}
+            template<typename... Args>
+            multiset_node(Args&&... args) : data(std::forward<Args>(args)...), next(nullptr), previous(nullptr) {}
+            multiset_node(const multiset_node &other) = default;
+            multiset_node(multiset_node &&other) = default;
+        };
+
+        using node_type = multiset_node*;
+        using internal_ptr = rb_node<node_type>*;
+
+        internal_ptr _root;
+        internal_ptr _sentinel;
+        size_type _size;
+        key_compare _less;
+
+    public:
+        class iterator {
+            friend class multiset;
+            using internal_ptr = multiset::internal_ptr;
+
+        public:
+            using iterator_category = std::bidirectional_iterator_tag;
+            using value_type = multiset::value_type;
+            using reference = multiset::const_reference;
+            using pointer = multiset::const_pointer;
+            using difference_type = multiset::difference_type;
+
+            iterator(const iterator &other) = default;
+            iterator(iterator &&other) = default;
+
+            iterator &operator=(const iterator &rhs) = default;
+            iterator &operator=(internal_ptr ptr) {
+                this->_ptr = ptr;
+                return *this;
+            }
+
+            bool operator==(const iterator &rhs) const { return this->_ptr == rhs._ptr; }
+            bool operator==(internal_ptr ptr) const { return this->_ptr == ptr; }
+            bool operator!=(const iterator &rhs) const { return !(*this == rhs); }
+            bool operator!=(internal_ptr ptr) const { return !(*this == ptr); }
+
+            /* Inorder successor algorithm. */
+            iterator &operator++() {
+                internal_ptr current;
+
+                if (_ptr == nullptr) {
+                    return *this;
+                }
+
+                /* First, check if the pointer to internal list has no other elements.  */
+                if (_inner_ptr->next != nullptr) {
+                    _inner_ptr = _inner_ptr->next;
+                    return *this;
+                }
+
+                if (_ptr->_right) {
+                    current = _ptr->_right;
+                    while (current->_left != nullptr) {
+                        current = current->_left;
+                    }
+                }
+                else {
+                    current = _ptr->_parent;
+                    while (current != nullptr && _ptr == current->_right) {
+                        _ptr = current;
+                        current = current->_parent;
+                    }
+                }
+
+                _ptr = current;
+                _inner_ptr = _ptr ? _ptr->data : nullptr;
+                return *this;
+            }
+            iterator operator++(int) {
+                auto temp(*this);
+                ++(*this);
+                return temp;
+            }
+            /* Inorder predecessor algorithm. */
+            iterator &operator--() {
+                internal_ptr current;
+
+                if (_ptr == nullptr) {
+                    return *this;
+                }
+
+                if (_inner_ptr->previous != nullptr) {
+                    _inner_ptr = _inner_ptr->previous;
+                    return *this;
+                }
+
+                if (_ptr->_left) {
+                    current = _ptr->_left;
+                    while (current->_right != nullptr) {
+                        current = current->_right;
+                    }
+                }
+                else {
+                    current = _ptr->_parent;
+                    while (current->_parent != nullptr && _ptr == current->_left) {
+                        _ptr = current;
+                        current = current->_parent;
+                    }
+                }
+
+                _ptr = current;
+                _inner_ptr = _ptr ? _ptr->data : nullptr;
+                return *this;
+            }
+            iterator operator--(int) {
+                auto temp(*this);
+                ++(*this);
+                return temp;
+            }
+
+            reference operator*() const { return _inner_ptr->data; }
+            pointer operator->() const { return &(_inner_ptr->data); }
+
+            void swap(iterator &lhs, iterator& rhs) {
+                std::swap(lhs, rhs);
+            }
+
+        private:
+            internal_ptr _ptr;
+            node_type _inner_ptr;
+
+            iterator(internal_ptr *ptr = nullptr) : _ptr(ptr) {
+                _inner_ptr = _ptr ? _ptr->data : nullptr;
+            }
+        };
+
+        class reverse_iterator {
+            friend class multiset;
+            friend class iterator;
+            using internal_ptr = multiset::internal_ptr;
+
+        public:
+            using iterator_category = std::bidirectional_iterator_tag;
+            using value_type = multiset::value_type;
+            using reference = multiset::const_reference;
+            using pointer = multiset::const_pointer;
+            using difference_type = multiset::difference_type;
+
+            reverse_iterator(const reverse_iterator &other) = default;
+            reverse_iterator(reverse_iterator &&other) = default;
+
+            reverse_iterator &operator=(const reverse_iterator &rhs) = default;
+            reverse_iterator &operator=(internal_ptr ptr) {
+                this->_it = ptr;
+                return *this;
+            }
+
+            bool operator==(const reverse_iterator &rhs) const { return this->_it == rhs._it; }
+            bool operator==(internal_ptr ptr) const { return this->_it == ptr; }
+            bool operator!=(const reverse_iterator &rhs) const { return !(*this == rhs); }
+            bool operator!=(internal_ptr ptr) const { return !(*this == ptr); }
+
+            reverse_iterator &operator++() {
+                --_it;
+                return *this;
+            }
+            reverse_iterator operator++(int) { return _it--; }
+            reverse_iterator &operator--() {
+                ++_it;
+                return *this;
+            }
+            reverse_iterator operator--(int) { return _it++; }
+
+            reference operator*() const { return *_it; }
+            pointer operator->() const { return _it.operator->(); }
+
+            void swap(reverse_iterator &lhs, reverse_iterator& rhs) {
+                std::swap(lhs, rhs);
+            }
+
+        private:
+            iterator _it;
+
+            reverse_iterator(internal_ptr ptr) : _it(ptr) {}
+        };
+
+        /* Constructors/Destructors.  */
+        multiset(const key_compare &keq = key_compare()) noexcept;
+        explicit multiset(const multiset &other) noexcept;
+        multiset(multiset &&other) noexcept;
         ~multiset();
+        multiset &operator=(multiset rhs);
 
-        multiset& operator=(multiset x);
+        /* Iterators.  */
+        iterator begin() noexcept;
+        const_iterator begin() const noexcept;
+        iterator end() noexcept;
+        const_iterator end() const noexcept;
+        reverse_iterator rbegin() noexcept;
+        const_reverse_iterator rbegin() const;
+        reverse_iterator rend() noexcept;
+        const_reverse_iterator rend() const noexcept;
+        const_iterator cbegin() const noexcept;
+        const_iterator cend() const noexcept;
+        const_reverse_iterator crbegin() const noexcept;
+        const_reverse_iterator crend() const noexcept;
 
-        bool add(const T& data);
-        bool add(T&& data);
-        bool remove(const T& key);
-        multiset_iterator<T> remove(multiset_iterator<T> itr);
+        /* Capacity.  */
+        bool empty() const noexcept;
+        size_type size() const noexcept;
+
+        /* Observers.  */
+        key_compare key_comp() const;
+        value_compare value_comp() const;
+
+        /* Modifiers.  */
+        iterator insert(const value_type &val);
+        iterator insert(value_type &&val);
+        template <class... Args>
+        iterator emplace(Args &&... args);
+        iterator erase(const_iterator pos);
+        size_type erase(const value_type &val);
+        iterator erase(const_iterator first, const_iterator last);
         void clear() noexcept;
-        void clear() const noexcept;
-        bool empty();
+        void swap(multiset &other);
 
-        size_t size();
+        /* Operations.  */
+        iterator find(const key_type &key);
+        const_iterator find(const key_type &key) const;
+        size_type count(const key_type &key) const;
+        iterator lower_bound(const key_type &key);
+        const_iterator lower_bound(const key_type &key) const;
+        iterator upper_bound(const key_type &key);
+        const_iterator upper_bound(const key_type &key) const;
+        std::pair<iterator, iterator> equal_range(const key_type &key);
+        std::pair<const_iterator, const_iterator> equal_range(const key_type &key) const;
 
-        multiset_iterator<T> begin();
-        multiset_iterator<T> end();
-        multiset_iterator<T> search(const T& key);
-        multiset_iterator<T> lower_bound(const T& val);
-        multiset_iterator<T> upper_bound(const T& val);
-
-        friend void swap(multiset& lhs, multiset& rhs) {
+        friend void swap(multiset &lhs, multiset &rhs) {
             using std::swap;
 
-            swap(lhs.root, rhs.root);
-            swap(lhs.endNode, rhs.endNode);
-            swap(lhs.less, rhs.less);
+            swap(lhs._root, rhs._root);
+            swap(lhs._sentinel, rhs._sentinel);
+            swap(lhs._less, rhs._less);
             swap(lhs._size, rhs._size);
         }
 
-        MultiSetNode<T>* _successor(MultiSetNode<T>*);
+    private:
+        internal_ptr _copy_tree(internal_ptr other_root);
+        iterator _add_to_list(internal_ptr ptr, multiset_node *new_node);
+        internal_ptr _construct_new_element(const value_type &val);
+        internal_ptr _construct_new_element(value_type &&val);
+        internal_ptr _construct_new_element(multiset_node *val);
+        iterator _handle_elem_found(internal_ptr ptr, const value_type &val);
+        iterator _handle_elem_found(internal_ptr ptr, value_type &&val);
+        iterator _handle_elem_found(internal_ptr ptr, multiset_node *val);
+        iterator _handle_elem_not_found(internal_ptr ptr);
+        key_type &_get_key(rb_node<node_type> *tnode);
+        bool _is_equal_key(const key_type &lhs_key, const key_type &rhs_key) const;
+        size_type _erase_list(internal_ptr erase_ptr);
+        size_type _erase_node(internal_ptr erase_ptr);
+        std::pair<rb_node<node_type> *, size_type> _erase(const_iterator pos, bool erase_all);
     };
 
-    #define multiset_parent_of(node) _multiset_parent_of(node)
+    /* Implementation.  */
 
-        template<typename T>
-        static inline MultiSetNode<T>* _multiset_parent_of(MultiSetNode<T>* node) {
-            return node ? node->parent : nullptr;
-        }
-
-    #define multiset_grandparent_of(node) _multiset_grandparent_of(node)
-
-        template<typename T>
-        static inline MultiSetNode<T>* _multiset_grandparent_of(MultiSetNode<T>* node) {
-            if (node) {
-                if (node->parent) {
-                    return node->parent->parent;
-                }
-            }
-            return nullptr;
-        }
-
-        template<typename T>
-        static inline MultiSetNode<T>* multiset_left_of(MultiSetNode<T> *node) {
-            return node ? node->left : nullptr;
-        }
-
-        template<typename T>
-        static inline MultiSetNode<T>* multiset_right_of(MultiSetNode<T> *node) {
-            return node ? node->right : nullptr;
-        }
-
-    #define multiset_assign_color(node, color) _multiset_multiset_color(node, color)
-
-        template<typename T>
-        static inline void _multiset_multiset_color(MultiSetNode<T> *node, char color) {
-            if (node) {
-                node->color = color;
-            }
-        }
-
-    #define multiset_color_of(node) _multiset_color_of(node)
-
-        template<typename T>
-        static inline char _multiset_color_of(MultiSetNode<T> *node) {
-            return node ? node->color : (int8_t) MultiSetNode<T>::BLACK;
-        }
-
-    #define multiset_balance_insertion(side, rotate_1, rotate_2)             \
-        do  {                                                           \
-                {                                                       \
-                    MultiSetNode<T> *uncle = side(multiset_grandparent_of(node)); \
-                                                                        \
-                    if (multiset_color_of(uncle) == RED) {                   \
-                        /*Uncle RED means color-flip*/                  \
-                                                                        \
-                        multiset_assign_color(multiset_parent_of(node), BLACK);   \
-                        multiset_assign_color(multiset_grandparent_of(node), RED);\
-                        multiset_assign_color(uncle, BLACK);                 \
-                        node = multiset_grandparent_of(node);                \
-                    }                                                   \
-                    else {                                              \
-                        /*Uncle BLACK means rotations*/                 \
-                        if (node == side(multiset_parent_of(node))) {        \
-                            node = multiset_parent_of(node);                 \
-                            rotate_2(node);                             \
-                        }                                               \
-                        multiset_assign_color(multiset_parent_of(node), BLACK);   \
-                        multiset_assign_color(multiset_grandparent_of(node), RED);\
-                        rotate_1(multiset_grandparent_of(node));             \
-                    }                                                   \
-                }                                                       \
-        } while(0)
-
-    #define multiset_balance_deletion(side1, side2, rotate_side1, rotate_side2)   \
-        do {                                                                 \
-                {                                                            \
-                    MultiSetNode<T>* sibling = side1(multiset_parent_of(node));        \
-                    if (multiset_color_of(sibling) == RED) {                      \
-                        multiset_assign_color(sibling, BLACK);                    \
-                        multiset_assign_color(multiset_parent_of(node), RED);          \
-                        rotate_side1(multiset_parent_of(node));                   \
-                        sibling = side1(multiset_parent_of(node));                \
-                    }                                                        \
-                    if (multiset_color_of(side2(sibling)) == BLACK && multiset_color_of(side1(sibling)) == BLACK) { \
-                        multiset_assign_color(sibling, RED);                      \
-                        node = multiset_parent_of(node);                          \
-                    }                                                        \
-                    else {                                                   \
-                        if (multiset_color_of(side1(sibling)) == BLACK) {         \
-                            multiset_assign_color(side2(sibling), BLACK);         \
-                            multiset_assign_color(sibling, RED);                  \
-                            rotate_side2(sibling);                           \
-                            sibling = side1(multiset_parent_of(node));            \
-                        }                                                    \
-                        multiset_assign_color(sibling, multiset_color_of(multiset_parent_of(node)));\
-                        multiset_assign_color(multiset_parent_of(node), BLACK);        \
-                        multiset_assign_color(side1(sibling), BLACK);             \
-                        rotate_side1(multiset_parent_of(node));                   \
-                        node = this->root;                                   \
-                    }                                                        \
-                }                                                            \
-        } while(0)
-
-    template<typename T, class Less>
-    multiset<T, Less>::multiset() noexcept : root(nullptr), endNode(nullptr) , _size(0) {}
-
-    template<typename T, class Less>
-    MultiSetNode<T>* multiset<T, Less>::_copy_tree(MultiSetNode<T>* other_root) {
-        if (other_root == nullptr) {
-            return nullptr;
-        }
-
-        MultiSetNode<T>* new_node = new MultiSetNode<T>();
-        for (DataNode<T> *current = other_root->data_list.head.get() ; current != nullptr ; current = current->next.get()) {
-            new_node->data_list._push_back(current->data);
-        }
-
-        new_node->left = _copy_tree(other_root->left);
-        if (new_node->left) {
-            new_node->left->parent = new_node;
-        }
-
-        new_node->right = _copy_tree(other_root->right);
-        if (new_node->right) {
-            new_node->right->parent = new_node;
-        }
-
-        return new_node;
+    /* Public member functions.  */
+    template<typename Key, class Less>
+    multiset<Key, Less>::multiset(const key_compare &keq) noexcept : _root(nullptr), _size(0), _less(keq) {
+        _sentinel = new rb_node<node_type>();
     }
 
-    template<typename T, class Less>
-    multiset<T, Less>::multiset(const MultiSet& other) noexcept {
-        /*Create an exact copy of this MultiSet, O(n)*/
-        this->root = _copy_tree(other.root);
-        this->endNode = new MultiSetNode<T>();
-        this->endNode->left = this->root;
-        this->root->parent = this->endNode;
+    template<typename Key, class Less>
+    multiset<Key, Less>::multiset(const multiset &other) noexcept {
+        if (this != &other) {
+            /* Create an exact copy of this set, O(n).  */
+            _root = _copy_tree(other._root);
+            _sentinel = new rb_node<node_type>();
+            _sentinel->left = _root;
+            _root->parent = _sentinel;
+            _less = other._less;
+        }
     }
 
-    template<typename T, class Less>
-    multiset<T, Less>::multiset(MultiSet&& other) noexcept : multiset() {
+    template<typename Key, class Less>
+    multiset<Key, Less>::multiset(multiset &&other) noexcept : multiset() {
         swap(*this, other);
     }
 
-    template<typename T, class Less>
-    multiset<T, Less>& multiset<T, Less>::operator=(multiset other) {
-        /*Copy and swap idiom, let the compiler handle the copy of the argument*/
-        swap(*this, other);
+    template<typename Key, class Less>
+    multiset<Key, Less>::~multiset() {
+        if (_root != nullptr) {
+            clear();
+            delete _sentinel;
+        } else {
+            if (_sentinel) delete _sentinel;
+        }
+    }
+
+    template<typename Key, class Less>
+    multiset<Key, Less> &multiset<Key, Less>::operator=(multiset rhs) {
+        /* Copy and swap idiom, let the compiler handle the copy of the argument.  */
+        swap(*this, rhs);
 
         return *this;
     }
 
-    template<typename T, class Less>
-    void multiset<T, Less>::tree_destroy(MultiSetNode<T> *current) {
+    template<typename Key, class Less>
+    multiset_t::iterator multiset<Key, Less>::begin() noexcept {
+        internal_ptr current = _root;
 
-        if (!current) {
-            return;
-        }
-
-        tree_destroy(current->left);
-        tree_destroy(current->right);
-
-        delete current;
-    }
-
-    template<typename T, class Less>
-    multiset<T, Less>::~multiset() {
-        if (this->root) {
-            tree_destroy(this->root);
-            delete this->endNode;
-        }
-    }
-
-    template<typename T, class Less>
-    MultiSetNode<T> *multiset<T, Less>::bst_insert(bool &added_new, const T &data) {
-
-        if (empty()) {
-            added_new = true;
-            this->root = new MultiSetNode<T>(data);
-            this->endNode = new MultiSetNode<T>();
-            this->endNode->left = this->root;
-            this->root->parent = this->endNode;
-            return this->root;
-        }
-
-        MultiSetNode<T> *current = this->root;
-        while (1) {
-
-            if (less(data, current->data_list.head->data)) {
-                if (current->left != nullptr) {
-                    current = current->left;
-                }
-                else {
-                    added_new = true;
-                    MultiSetNode<T> *new_node = new MultiSetNode<T>(data);
-                    current->left = new_node;
-                    new_node->parent = current;
-
-                    return new_node;
-                }
-            }
-            else if (less(current->data_list.head->data, data)) {
-                if (current->right != nullptr) {
-                    current = current->right;
-                }
-                else {
-                    added_new = true;
-                    MultiSetNode<T> *new_node = new MultiSetNode<T>(data);
-                    current->right = new_node;
-                    new_node->parent = current;
-
-                    return new_node;
-                }
-            }
-            else {
-                added_new = false;
-                current->data_list._push_back(data);
-                return current;
-            }
-        }
-    }
-
-    template<typename T, class Less>
-    MultiSetNode<T> *multiset<T, Less>::bst_insert(bool &added_new, T &&data) {
-
-        if (empty()) {
-            added_new = true;
-            this->root = new MultiSetNode<T>(std::forward<T>(data));
-            this->endNode = new MultiSetNode<T>();
-            this->endNode->left = this->root;
-            this->root->parent = this->endNode;
-            return this->root;
-        }
-
-        MultiSetNode<T> *current = this->root;
-        while (1) {
-
-            if (less(data, current->data_list.head->data)) {
-                if (current->left != nullptr) {
-                    current = current->left;
-                }
-                else {
-                    added_new = true;
-                    MultiSetNode<T> *new_node = new MultiSetNode<T>(std::forward<T>(data));
-                    current->left = new_node;
-                    new_node->parent = current;
-
-                    return new_node;
-                }
-            }
-            else if (less(current->data_list.head->data, data)) {
-                if (current->right != nullptr) {
-                    current = current->right;
-                }
-                else {
-                    added_new = true;
-                    MultiSetNode<T> *new_node = new MultiSetNode<T>(std::forward<T>(data));
-                    current->right = new_node;
-                    new_node->parent = current;
-
-                    return new_node;
-                }
-            }
-            else {
-                added_new = false;
-                current->data_list._push_back(data);
-                return current;
-            }
-        }
-    }
-
-    template<typename T, class Less>
-    MultiSetNode<T>* multiset<T, Less>::_successor(MultiSetNode<T> *node) {
-        if (node == nullptr) {
-            return nullptr;
-        }
-        MultiSetNode<T>* current;
-        if (node->right) {
-            current = node->right;
+        if (current) {
             while (current->left != nullptr) {
                 current = current->left;
             }
         }
-        else {
-            current = node->parent;
-            while (current != nullptr && node == current->right) {
-                node = current;
-                current = current->parent;
-            }
-        }
 
-        return current;
+        return iterator(current);
     }
 
-
-    template<typename T, class Less>
-    multiset_iterator<T> multiset<T, Less>::begin() {
-        MultiSetNode<T> *current = this->root;
-        if (current == nullptr) {
-            return multiset_iterator<T>();
-        }
-        while (current->left != nullptr) {
-            current = current->left;
-        }
-
-        return multiset_iterator<T>(current);
+    template<typename Key, class Less>
+    multiset_t::const_iterator multiset<Key, Less>::begin() const noexcept {
+        return const_cast<multiset<Key, Less>*>(this)->begin();
     }
 
-    template<typename T, class Less>
-    multiset_iterator<T> multiset<T, Less>::end() {
-        return multiset_iterator<T>(endNode);
+    template<typename Key, class Less>
+    multiset_t::iterator multiset<Key, Less>::end() noexcept {
+        return iterator(_sentinel);
     }
 
-    template<typename T, class Less>
-    inline bool multiset<T, Less>::_is_equal_key(const T& nodeval, const T& val) {
-        if (less(val, nodeval)) {
-            return false;
-        }
-        else if (less(nodeval, val)) {
-            return false;
-        }
-        return true;
+    template<typename Key, class Less>
+    multiset_t::const_iterator multiset<Key, Less>::end() const noexcept {
+        return const_cast<multiset<Key, Less>*>(this)->end();
     }
 
-    template<typename T, class Less>
-    MultiSetNode<T>* multiset<T, Less>::_find_bound(MultiSetNode<T> *_root, const T &val) {
-        if (_root == nullptr) {
-            return nullptr;
-        }
+    template<typename Key, class Less>
+    multiset_t::reverse_iterator multiset<Key, Less>::rbegin() noexcept {
+        rb_node<node_type> *current = _root;
 
-        if (_is_equal_key(_root->data_list.head->data, val)) {
-            return _root;
-        }
-
-        if (less(_root->data_list.head->data, val)) {
-            return _find_bound(_root->right, val);
-        }
-
-        MultiSetNode<T>* retnode = _find_bound(_root->left, val);
-        return retnode == nullptr ? _root : retnode;
-    }
-
-    template<typename T, class Less>
-    multiset_iterator<T> multiset<T, Less>::upper_bound(const T& val) {
-        MultiSetNode<T>* retnode = _find_bound(this->root, val);
-        if (retnode == nullptr) {
-            return this->end();
-        }
-        else {
-            if (_is_equal_key(retnode->data_list.head->data, val)) {
-                return multiset_iterator<T>(_successor(retnode));
-            }
-            else {
-                return multiset_iterator<T>(retnode);
-            }
-        }
-    }
-
-    template<typename T, class Less>
-    multiset_iterator<T> multiset<T, Less>::lower_bound(const T& val) {
-        MultiSetNode<T> *retnode = _find_bound(this->root, val);
-        if (retnode == nullptr) {
-            return this->end();
-        }
-        else {
-            return multiset_iterator<T>(retnode);
-        }
-    }
-
-    template<typename T, class Less>
-    multiset_iterator<T> multiset<T, Less>::search(const T &val) {
-        if (this->root == nullptr) {
-            return this->end();
-        }
-        MultiSetNode<T> *current = this->root;
-        while (current) {
-            if (less(val, current->data_list.head->data)) {
-                current = current->left;
-            }
-            else if (less(current->data_list.head->data, val)) {
+        if (current) {
+            while (current->right != nullptr) {
                 current = current->right;
             }
-            else {
-                return multiset_iterator<T>(current);
+        }
+
+        return reverse_iterator(current);
+    }
+
+    template<typename Key, class Less>
+    multiset_t::const_reverse_iterator multiset<Key, Less>::rbegin() const {
+        return const_cast<multiset<Key, Less>*>(this)->rbegin();
+    }
+
+    template<typename Key, class Less>
+    multiset_t::reverse_iterator multiset<Key, Less>::rend() noexcept {
+        return reverse_iterator(_sentinel);
+    }
+
+    template<typename Key, class Less>
+    multiset_t::const_reverse_iterator multiset<Key, Less>::rend() const noexcept {
+        return const_cast<multiset<Key, Less>*>(this)->rend();
+    }
+
+    template<typename Key, class Less>
+    multiset_t::const_iterator multiset<Key, Less>::cbegin() const noexcept {
+        return const_cast<multiset<Key, Less>*>(this)->begin();
+    }
+
+    template<typename Key, class Less>
+    multiset_t::const_iterator multiset<Key, Less>::cend() const noexcept {
+        return const_cast<multiset<Key, Less>*>(this)->end();
+    }
+
+    template<typename Key, class Less>
+    multiset_t::const_reverse_iterator multiset<Key, Less>::crbegin() const noexcept {
+        return const_cast<multiset<Key, Less>*>(this)->rbegin();
+    }
+
+    template<typename Key, class Less>
+    multiset_t::const_reverse_iterator multiset<Key, Less>::crend() const noexcept {
+        return const_cast<multiset<Key, Less>*>(this)->rend();
+    }
+
+    template<typename Key, class Less>
+    bool multiset<Key, Less>::empty() const noexcept {
+        return _size == 0;
+    }
+
+    template<typename Key, class Less>
+    multiset_t::size_type multiset<Key, Less>::size() const noexcept {
+        return _size;
+    }
+
+    template<typename Key, class Less>
+    multiset_t::key_compare multiset<Key, Less>::key_comp() const {
+        return _less;
+    }
+
+    template<typename Key, class Less>
+    multiset_t::value_compare multiset<Key, Less>::value_comp() const {
+        return _less;
+    }
+
+    template<typename Key, class Less>
+    multiset_t::iterator multiset<Key, Less>::insert(const value_type &val) {
+        return _rbtree_insert<multiset<Key, Less>, iterator, key_type, const value_type&>(this, val, val);
+    }
+
+    template<typename Key, class Less>
+    multiset_t::iterator multiset<Key, Less>::insert(value_type &&val) {
+        return _rbtree_insert<set<Key, Less>, iterator, key_type, value_type&&>(this, val, std::forward<value_type>(val));
+    }
+
+    template<typename Key, class Less>
+    template<class... Args>
+    multiset_t::iterator multiset<Key, Less>::emplace(Args &&... args) {
+        internal_ptr val = new rb_node<node_type>(std::forward<Args>(args)...);
+        return _rbtree_insert<set<Key, Less>, std::pair<iterator, bool>, key_type, internal_ptr>(this, val->data, val);
+    }
+
+    template<typename Key, class Less>
+    multiset_t::iterator multiset<Key, Less>::erase(const_iterator pos) {
+        return _erase(pos, false).first;
+    }
+
+    template<typename Key, class Less>
+    multiset_t::size_type multiset<Key, Less>::erase(const value_type &val) {
+        return _erase(find(val), true).second;
+    }
+
+    template<typename Key, class Less>
+    multiset_t::iterator multiset<Key, Less>::erase(multiset::const_iterator first, multiset::const_iterator last) {
+        auto it = first;
+
+        while (it != last) it = erase(it);
+
+        return it;
+    }
+
+    template<typename Key, class Less>
+    void multiset<Key, Less>::clear() noexcept {
+        _rbtree_destruct<multiset<Key, Less>>(_root);
+    }
+
+    template<typename Key, class Less>
+    void multiset<Key, Less>::swap(multiset &other) {
+        swap(*this, other);
+    }
+
+    template<typename Key, class Less>
+    multiset_t::iterator multiset<Key, Less>::find(const key_type &key) {
+        return _rbtree_find<multiset<Key, Less>>(this, key);
+    }
+
+    template<typename Key, class Less>
+    multiset_t::const_iterator multiset<Key, Less>::find(const key_type &key) const {
+        return const_cast<multiset<Key, Less>*>(this)->find(key);
+    }
+
+    template<typename Key, class Less>
+    multiset_t::size_type multiset<Key, Less>::count(const key_type &key) const {
+        multiset_node *current;
+        multiset_node *found_ptr = const_cast<multiset<Key, Less>*>(this)->find(key)._ptr;
+        size_t count = 0;
+
+        if (found_ptr == _sentinel) return count;
+
+        current = found_ptr->data;
+        while (current != nullptr) {
+            count++;
+            current = current->next;
+        }
+
+        return count;
+    }
+
+    template<typename Key, class Less>
+    multiset_t::iterator multiset<Key, Less>::lower_bound(const key_type &key) {
+        internal_ptr bound = _rbtree_find_bound<multiset<Key, Less>>(this, _root, key);
+
+        return bound == nullptr ? end() : iterator(bound);
+    }
+
+    template<typename Key, class Less>
+    multiset_t::const_iterator multiset<Key, Less>::lower_bound(const key_type &key) const {
+        return const_cast<multiset<Key, Less>*>(this)->lower_bound(key);
+    }
+
+    template<typename Key, class Less>
+    multiset_t::iterator multiset<Key, Less>::upper_bound(const key_type &key) {
+        internal_ptr bound = _rbtree_find_bound<set<Key, Less>>(this, _root, key);
+
+        if (bound == nullptr) {
+            return end();
+        } else {
+            if (_is_equal_key(bound->data, key)) {
+                return iterator(_rbtree_successor<set<Key, Less>>(bound));
+            } else {
+                return iterator(bound);
+            }
+        }
+    }
+
+    template<typename Key, class Less>
+    multiset_t::const_iterator multiset<Key, Less>::upper_bound(const key_type &key) const {
+        return const_cast<multiset<Key, Less>*>(this)->upper_bound(key);
+    }
+
+    template<typename Key, class Less>
+    std::pair<multiset_t::iterator, multiset_t::iterator> multiset<Key, Less>::equal_range(const key_type &key) {
+        auto first = find(key);
+        auto second(first);
+
+        return {first, ++second};
+    }
+
+    template<typename Key, class Less>
+    std::pair<multiset_t::const_iterator, multiset_t::const_iterator> multiset<Key, Less>::equal_range(const key_type &key) const {
+        return const_cast<multiset<Key, Less>*>(this)->equal_range(key);
+    }
+
+    /* Private member functions.  */
+    template<typename Key, class Less>
+    multiset_t::internal_ptr multiset<Key, Less>::_copy_tree(internal_ptr other_root) {
+        internal_ptr new_node;
+
+        if (other_root == nullptr) return nullptr;
+
+        new_node = new rb_node<node_type>(other_root->data);
+
+        new_node->left = _copy_tree(other_root->left);
+        if (new_node->left) new_node->left->parent = new_node;
+
+        new_node->right = _copy_tree(other_root->right);
+        if (new_node->right) new_node->right->parent = new_node;
+
+        return new_node;
+    }
+
+    template<typename Key, class Less>
+    multiset_t::iterator multiset<Key, Less>::_add_to_list(internal_ptr ptr, multiset_node *new_node) {
+        new_node->next = ptr->data;
+        ptr->data = new_node;
+        new_node->next->previous = new_node;
+        _size++;
+
+        return ptr;
+    }
+
+    template<typename Key, class Less>
+    multiset_t::internal_ptr multiset<Key, Less>::_construct_new_element(const value_type &val) {
+        return new rb_node<node_type>(new multiset_node(val));
+    }
+
+    template<typename Key, class Less>
+    multiset_t::internal_ptr multiset<Key, Less>::_construct_new_element(value_type &&val) {
+        return new rb_node<node_type>(new multiset_node(std::forward<value_type>(val)));
+    }
+
+    template<typename Key, class Less>
+    multiset_t::internal_ptr multiset<Key, Less>::_construct_new_element(multiset_node *val) {
+        return new rb_node<node_type>(val);
+    }
+
+    template<typename Key, class Less>
+    multiset_t::iterator multiset<Key, Less>::_handle_elem_found(internal_ptr ptr, const value_type &val) {
+        return _add_to_list(ptr, new multiset_node(val));
+    }
+
+    template<typename Key, class Less>
+    multiset_t::iterator multiset<Key, Less>::_handle_elem_found(internal_ptr ptr, value_type &&val) {
+        return _add_to_list(ptr, new multiset_node(std::forward<value_type>(val)));
+    }
+
+    template<typename Key, class Less>
+    multiset_t::iterator multiset<Key, Less>::_handle_elem_found(internal_ptr ptr, multiset_node *val) {
+        return _add_to_list(ptr, val);
+    }
+
+    template<typename Key, class Less>
+    multiset_t::iterator multiset<Key, Less>::_handle_elem_not_found(internal_ptr ptr) {
+        return ptr;
+    }
+
+    template<typename Key, class Less>
+    multiset_t::key_type &multiset<Key, Less>::_get_key(internal_ptr tnode) {
+        return tnode->data->data;
+    }
+
+    template<typename Key, class Less>
+    bool multiset<Key, Less>::_is_equal_key(const key_type &lhs_key, const key_type &rhs_key) const {
+        return _less(lhs_key, rhs_key) || _less(rhs_key, lhs_key);
+    }
+
+    template<typename Key, class Less>
+    multiset_t::size_type multiset<Key, Less>::_erase_list(internal_ptr erase_ptr) {
+        multiset_node *current, *to_delete;
+        size_t count = 0;
+
+        current = erase_ptr->data;
+        while (current->next != nullptr) {
+            to_delete = current->next;
+            current->next = to_delete->next;
+
+            delete to_delete;
+            count++;
+        }
+
+        delete erase_ptr->data;
+        delete erase_ptr;
+        count++;
+
+        return count;
+    }
+
+    template<typename Key, class Less>
+    multiset_t::size_type multiset<Key, Less>::_erase_node(internal_ptr erase_ptr) {
+        multiset_node *head = erase_ptr->data;
+
+        erase_ptr->data = head->next;
+        delete head;
+
+        return 1;
+    }
+
+    template<typename Key, class Less>
+    std::pair<multiset_t::internal_ptr, multiset_t::size_type> multiset<Key, Less>::_erase(const_iterator pos, bool erase_all) {
+        internal_ptr save, successor, next_elem_ptr, erase_ptr;
+        multiset_node *current, *to_delete;
+        size_t count = 0;
+
+        if (pos != end()) {
+            save = _sentinel;
+            _root->parent = nullptr;
+
+            successor = _rbtree_successor<multiset<Key, Less>>(pos._ptr);
+            erase_ptr = _rbtree_erase<set<Key, Less>>(this, pos._ptr, successor);
+
+            if (erase_ptr != _root) {
+                next_elem_ptr = erase_ptr == successor ? pos._ptr : successor;
+
+                count = erase_all ? _erase_list(erase_ptr) : _erase_node(erase_ptr);
+
+                /* Update the sentinel node.  */
+                _sentinel = save;
+                _root->parent = _sentinel;
+                _sentinel->left = _root;
+                _size -= count;
+
+                return {successor != nullptr ? next_elem_ptr : end(), count};
+            } else {
+
             }
         }
 
-        return this->end();
-    }
-
-    template<typename T, class Less>
-    bool multiset<T, Less>::add(const T &data) {
-
-        bool added_new;
-        MultiSetNode<T> *current = bst_insert(added_new, data);
-
-        if (!added_new) {
-            return false;
-        }
-
-        restore_balance(current,INSERTION);
-
-        this->root->color = BLACK;
-        this->_size++;
-        this->endNode->left = this->root;
-        this->root->parent = this->endNode;
-
-        return true;
-    }
-
-    template<typename T, class Less>
-    bool multiset<T, Less>::add(T &&data) {
-
-        bool added_new;
-        MultiSetNode<T> *current = bst_insert(added_new, std::forward<T>(data));
-
-        if (!added_new) {
-            return false;
-        }
-
-        restore_balance(current,INSERTION);
-
-        this->root->color = BLACK;
-        this->_size++;
-        this->root->parent = this->endNode;
-        this->endNode->left = this->root;
-
-        return true;
-    }
-
-    template<typename T, class Less>
-    MultiSetNode<T>* multiset<T, Less>::_remove(MultiSetNode<T>* current, MultiSetNode<T>* successor) {
-
-        /*If this node is not a leaf and has both children*/
-        if (current->left != nullptr && current->right != nullptr) {
-            /*Get the minimum value of the right subtree*/
-            current->data_list = successor->data_list;
-            current = successor;
-        }
-
-        MultiSetNode<T>* r_node = current->left != nullptr ? current->left : current->right;
-
-        /*If node has one children*/
-        if (r_node != nullptr) {
-            r_node->parent = current->parent;
-            MultiSetNode<T>* parent_node = current->parent;
-            if (parent_node == nullptr) {
-                this->root = r_node;
-            }
-            else if (current == parent_node->left) {
-                parent_node->left = r_node;
-            }
-            else {
-                parent_node->right = r_node;
-            }
-
-            current->right = nullptr;
-            current->left = nullptr;
-            current->parent = nullptr;
-
-            if (multiset_color_of(current) == BLACK) {
-                /*Balance only if its a black node*/
-                restore_balance(r_node, DELETION);
-            }
-        }
-        else if (current->parent == nullptr) {
-            this->_size = 0;
-            delete this->root;
-            delete this->endNode;
-            this->root = nullptr;
-            this->endNode = nullptr;
-            return this->root;
-        }
-        else {
-            /*Its a leaf*/
-            if (multiset_color_of(current) == BLACK) {
-                /*Balance only if its a black node*/
-                restore_balance(current, DELETION);
-            }
-
-            MultiSetNode<T>* parent_node = current->parent;
-            if (parent_node != nullptr) {
-                if (current == parent_node->left) {
-                    parent_node->left = nullptr;
-                }
-                else if (current == parent_node->right) {
-                    parent_node->right = nullptr;
-                }
-                current->parent = nullptr;
-            }
-        }
-
-        return current;
-    }
-
-    template<typename T, class Less>
-    bool multiset<T, Less>::remove(const T &key) {
-
-        MultiSetNode<T>* current = nullptr;
-        auto result = search(key);
-
-        if (result == end()) {
-            return false;
-        }
-
-        MultiSetNode<T>* save = this->endNode;
-        this->root->parent = nullptr;
-
-        MultiSetNode<T>* successor =  (++multiset_iterator<T>(result)).ptr;
-        current = _remove(result.ptr, successor);
-
-        if (current != nullptr) {
-            delete current;
-            current = nullptr;
-
-            /*Update the secret node*/
-            this->endNode = save;
-            this->root->parent = this->endNode;
-            this->endNode->left = this->root;
-            this->_size--;
-        }
-
-        return true;
-    }
-
-    template<typename T, class Less>
-    multiset_iterator<T> multiset<T, Less>::remove(multiset_iterator<T> itr) {
-        if (itr == end()) {
-            return itr;
-        }
-
-        if (itr.dataptr->next != nullptr) {
-            return ++itr;
-        }
-
-        MultiSetNode<T>* save = this->endNode;
-        this->root->parent = nullptr;
-
-        MultiSetNode<T>* successor =  (++multiset_iterator<T>(itr)).ptr;
-        MultiSetNode<T>* current = _remove(itr.ptr, successor);
-
-        if (current != nullptr) {
-            multiset_iterator<T> retrnValue(current == successor ? itr.ptr : successor);
-            delete current;
-            current = nullptr;
-
-            /*Update the secret node*/
-            this->endNode = save;
-            this->root->parent = this->endNode;
-            this->endNode->left = this->root;
-            this->_size--;
-
-            if (successor != nullptr) {
-                return retrnValue;
-            }
-            else {
-                return this->end();
-            }
-        }
-
-        return this->end();
-    }
-
-    template<typename T, class Less>
-    void multiset<T, Less>::clear() noexcept {
-        if (this->root) {
-            tree_destroy(this->root);
-            delete this->endNode;
-            this->root = nullptr;
-            this->endNode = nullptr;
-            this->_size = 0;
-        }
-    }
-
-    template<typename T, class Less>
-    void multiset<T, Less>::clear() const noexcept {
-        if (this->root) {
-            tree_destroy(this->root);
-            delete this->endNode;
-            this->root = nullptr;
-            this->endNode = nullptr;
-            this->_size = 0;
-        }
-    }
-
-    template<typename T, class Less>
-    bool multiset<T, Less>::empty() {
-        return this->root == nullptr;
-    }
-
-
-    template<typename T, class Less>
-    void multiset<T, Less>::restore_balance(MultiSetNode<T>* node, int8_t type) {
-
-        if (type == DELETION) {
-            while (node != this->root && multiset_color_of(node) == BLACK) {
-                if (node == multiset_left_of(multiset_parent_of(node))) {
-                    multiset_balance_deletion(multiset_right_of, multiset_left_of, rotate_left, rotate_right);
-                }
-                else {
-                    multiset_balance_deletion(multiset_left_of, multiset_right_of, rotate_right, rotate_left);
-                }
-            }
-
-            if (node != nullptr && multiset_color_of(node) != BLACK) {
-                multiset_assign_color(node, BLACK);
-            }
-        }
-        else if (type == INSERTION) {
-            node->color = RED;
-            this->root->parent = nullptr;
-
-            while (node != endNode && node != this->root) {
-                if (node->parent->color != RED) {
-                    break;
-                }
-
-                if (multiset_parent_of(node) == multiset_left_of(multiset_grandparent_of(node))) {
-                    multiset_balance_insertion(multiset_right_of, rotate_right, rotate_left);
-                }
-                else {
-                    multiset_balance_insertion(multiset_left_of, rotate_left, rotate_right);
-                }
-            }
-        }
-        else {
-            throw std::invalid_argument("This should not have happened, pls debug me :)");
-        }
-    }
-
-    template<typename T, class Less>
-    void multiset<T, Less>::rotate_right(MultiSetNode<T> *node) {
-
-        if (!node) {
-            return;
-        }
-
-        MultiSetNode<T> *left_child = node->left;
-        MultiSetNode<T> *left_right_child = left_child->right;
-
-        node->left = left_right_child;
-        if (left_right_child) {
-            left_right_child->parent = node;
-        }
-
-        MultiSetNode<T> *node_p = node->parent;
-        left_child->parent = node_p;
-
-        if (node_p == nullptr) {
-            this->root = left_child;
-        }
-        else if (node_p->right == node) {
-            node_p->right = left_child;
-        }
-        else {
-            node_p->left = left_child;
-        }
-
-        left_child->right = node;
-        node->parent = left_child;
-    }
-
-    template<typename T, class Less>
-    void multiset<T, Less>::rotate_left(MultiSetNode<T> *node) {
-
-        if (!node) {
-            return;
-        }
-
-        MultiSetNode<T> *right_child = node->right;
-        MultiSetNode<T> *right_left_child = right_child->left;
-
-        node->right = right_left_child;
-        if (right_left_child) {
-            right_left_child->parent = node;
-        }
-
-        MultiSetNode<T>  *node_p = node->parent;
-        right_child->parent = node_p;
-
-        if (node_p == nullptr) {
-            this->root = right_child;
-        }
-        else if (node_p->left == node) {
-            node_p->left = right_child;
-        }
-        else {
-            node_p->right = right_child;
-        }
-
-        right_child->left = node;
-        node->parent = right_child;
-    }
-
-    template<typename T, class Less>
-    size_t multiset<T, Less>::size() {
-        return this->_size;
-    }
-
-    template<typename T>
-    MultiSetNode<T>::MultiSetNode() : data_list(), left(nullptr), right(nullptr), parent(nullptr), color(RED) {}
-
-    template<typename T>
-    MultiSetNode<T>::MultiSetNode(const T &val) : data_list(), left(nullptr), right(nullptr), parent(nullptr), color(RED) {
-        data_list._push_back(val);
-    }
-
-    template<typename T>
-    MultiSetNode<T>::MultiSetNode(T &&val) : data_list(), left(nullptr), right(nullptr), parent(nullptr), color(RED) {
-        data_list._push_back(val);
+        return {end(), count};
     }
 }

@@ -204,7 +204,7 @@ namespace adt {
         /* Modifiers.  */
         iterator insert(const value_type &val);
         template<class P>
-        iterator insert(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type = enabler());
+        iterator insert(P &&val, typename std::enable_if<std::is_constructible<P&&, value_type>::value, enabler>::type = enabler());
         template<class... Args>
         iterator emplace(Args &&... args);
         iterator erase(const_iterator pos);
@@ -267,18 +267,17 @@ namespace adt {
         void _check_load_factor(uint64_t hash, size_type &pos);
         const key_type &_get_slot_key(internal_ptr slot);
 
-        find_insert_info _find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash);
+        iterator _add_to_list(const iterator &it, internal_ptr new_node);
+        internal_ptr _construct_new_element(const value_type &val);
+        template<typename P>
+        internal_ptr _construct_new_element(P &&val, typename std::enable_if<std::is_constructible<P&&, value_type>::value, enabler>::type = enabler());
+        internal_ptr _construct_new_element(internal_ptr val);
+
         iterator _handle_elem_found(const iterator &it, const value_type &val);
         template<typename P>
-        iterator _handle_elem_found(const iterator &it, P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type = enabler());
+        iterator _handle_elem_found(const iterator &it, P &&val, typename std::enable_if<std::is_constructible<P&&, value_type>::value, enabler>::type = enabler());
         iterator _handle_elem_found(const iterator &it, internal_ptr new_node);
         iterator _handle_elem_not_found(const iterator &it);
-
-        iterator _add_to_list(const iterator &it, internal_ptr new_node);
-        internal_ptr _construct_new_element(const_reference val);
-        template<typename P>
-        internal_ptr _construct_new_element(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type = enabler());
-        internal_ptr _construct_new_element(internal_ptr val);
 
         size_type _delete_all_slots(size_type pos);
         size_type _delete_slot(size_type pos);
@@ -389,7 +388,7 @@ namespace adt {
 
     template<typename K, typename V, typename Hash, typename Eq>
     template<typename P>
-    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::insert(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type) {
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::insert(P &&val, typename std::enable_if<std::is_constructible<P&&, value_type>::value, enabler>::type) {
         return _hash_insert<unordered_multimap<K, V, Hash, Eq>, iterator, key_type, P&&>(this, val.first, std::forward<P>(val), std::forward<P>(val));
     }
 
@@ -495,30 +494,39 @@ namespace adt {
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap_t::find_insert_info unordered_multimap<K, V, Hash, Eq>::_find_or_prepare_insert(const key_type &key, size_type pos, ctrl_t h2_hash) {
-        return _hash_find_or_prepare_insert<>(this, key, pos, h2_hash);
-    }
-
-    template<typename K, typename V, typename Hash, typename Eq>
     umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::_add_to_list(const iterator &it, internal_ptr new_node) {
-        multimap_node *head = *(it._ptr);
-
-        for (; head->next != nullptr ; head = head->next);
-
-        head->next = new_node;
+        new_node->next = *(it._ptr);
+        it = &new_node;
         _size++;
 
-        return {&(head->next)};
+        return it;
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::_handle_elem_found(const iterator &it, const_reference val) {
+    umultimap_t::internal_ptr unordered_multimap<K, V, Hash, Eq>::_construct_new_element(const value_type &val) {
+        return new multimap_node(val);
+    }
+
+    template<typename K, typename V, typename Hash, typename Eq>
+    template<typename P>
+    umultimap_t::internal_ptr unordered_multimap<K, V, Hash, Eq>::_construct_new_element(P &&val, typename std::enable_if<std::is_constructible<P&&, value_type>::value, enabler>::type) {
+        return new multimap_node(std::forward<value_type>(val));
+    }
+
+
+    template<typename K, typename V, typename Hash, typename Eq>
+    umultimap_t::internal_ptr unordered_multimap<K, V, Hash, Eq>::_construct_new_element(internal_ptr val) {
+        return val;
+    }
+
+    template<typename K, typename V, typename Hash, typename Eq>
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::_handle_elem_found(const iterator &it, const value_type &val) {
         return _add_to_list(it, new multimap_node(val));
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
     template<typename P>
-    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::_handle_elem_found(const iterator &it, P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type) {
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::_handle_elem_found(const iterator &it, P &&val, typename std::enable_if<std::is_constructible<P&&, value_type>::value, enabler>::type) {
         return _add_to_list(it, new multimap_node(std::forward<value_type>(val)));
     }
 
@@ -531,23 +539,6 @@ namespace adt {
     umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::_handle_elem_not_found(const iterator &it) {
         _n_slots++;
         return it;
-    }
-
-    template<typename K, typename V, typename Hash, typename Eq>
-    umultimap_t::internal_ptr unordered_multimap<K, V, Hash, Eq>::_construct_new_element(const_reference val) {
-        return new multimap_node(val);
-    }
-
-    template<typename K, typename V, typename Hash, typename Eq>
-    template<typename P>
-    umultimap_t::internal_ptr unordered_multimap<K, V, Hash, Eq>::_construct_new_element(P &&val, typename std::enable_if<std::is_constructible<P, value_type>::value, enabler>::type) {
-        return new multimap_node(std::forward<value_type>(val));
-    }
-
-
-    template<typename K, typename V, typename Hash, typename Eq>
-    umultimap_t::internal_ptr unordered_multimap<K, V, Hash, Eq>::_construct_new_element(internal_ptr val) {
-        return val;
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
