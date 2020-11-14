@@ -125,7 +125,7 @@ namespace hash_internal {
         assert(sizeof...(Args) <= 1);
 
         /* Try to find the key first.  */
-        auto p = _hash_find_or_prepare_insert<Container>(key, info.pos, info.h2_hash);
+        auto p = _hash_find_or_prepare_insert<Container>(cnt, key, info.pos, info.h2_hash);
         /* If we found it, return early.  */
         if (p.it != nullptr) return cnt->_handle_elem_found(p.it, std::forward<Args>(args)...);
 

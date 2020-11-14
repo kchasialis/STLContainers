@@ -63,6 +63,9 @@ namespace adt {
     public:
         class iterator {
             friend class map;
+            friend class const_iterator;
+            friend class reverse_iterator;
+            friend class const_reverse_iterator;
             using internal_ptr = map::internal_ptr;
 
         public:
@@ -548,9 +551,7 @@ namespace adt {
         iterator it = find(key);
 
         /* If we found it, return the mapped value.  */
-        if (it._ptr != _sentinel) {
-            return it->second;
-        }
+        if (it._ptr != _sentinel) return it->second;
 
         throw std::out_of_range("Key is not present on the map.");
     }
@@ -747,7 +748,7 @@ namespace adt {
             save = _sentinel;
             _root->parent = nullptr;
 
-            successor = (++iterator(pos))._ptr;
+            successor = _rbtree_successor<map<K, V, Less>>(pos._ptr);
             erase_ptr = _rbtree_erase<map<K, V, Less>>(this, pos._ptr, successor);
 
             if (erase_ptr != _root) {

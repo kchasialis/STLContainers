@@ -391,9 +391,7 @@ namespace adt {
         iterator it = find(key);
 
         /* If we found it, return the mapped value.  */
-        if (it._ptr != &_slots[_capacity]) {
-            return it->second;
-        }
+        if (it._ptr != &_slots[_capacity]) return it->second;
 
         throw std::out_of_range("Key is not present on the map.");
     }

@@ -29,7 +29,7 @@ namespace adt {
             list_node *next;
             list_node *previous;
 
-            list_node() noexcept : data(0), next(nullptr), previous(nullptr) {}
+            list_node() noexcept : data(), next(nullptr), previous(nullptr) {}
             explicit list_node(const T &val) noexcept : data(val), next(nullptr), previous(nullptr) {}
             explicit list_node(T &&val) noexcept : data(std::forward<T>(val)), next(nullptr), previous(nullptr)  {}
             template<typename... Args>
@@ -162,7 +162,9 @@ namespace adt {
             using iterator_category = std::bidirectional_iterator_tag;
             using value_type = list::value_type;
             using reference = list::reference;
+            using const_reference = list::const_reference;
             using pointer = list::pointer;
+            using const_pointer = list::const_pointer;
             using difference_type = list::difference_type;
 
             /* Implicit conversion from iterator.  */
@@ -172,9 +174,6 @@ namespace adt {
             bool operator==(list_node *ptr) const { return _it == ptr; }
             bool operator!=(const reverse_iterator &other) const { return !(*this == other); }
             bool operator!=(list_node *ptr) const { return !(*this == ptr); }
-
-            reference operator*() const { return *_it; }
-            pointer operator->() const { return _it.operator->(); }
 
             reverse_iterator &operator++() {
                 --_it;
@@ -186,6 +185,11 @@ namespace adt {
                 return *this;
             }
             reverse_iterator operator--(int) { return _it++; }
+
+            reference operator*() { return *_it; }
+            const_reference operator*() const { return *_it; }
+            pointer operator->() { return _it.operator->(); }
+            const_pointer operator->() const { return _it.operator->(); }
 
         private:
             iterator _it;
@@ -204,37 +208,36 @@ namespace adt {
             using difference_type = list::difference_type;
 
             /* Implicit conversion from iterator.  */
-            const_reverse_iterator(iterator it) : _it(std::move(it)) {}
+            const_reverse_iterator(reverse_iterator it) : _it(std::move(it)) {}
 
             bool operator==(const const_reverse_iterator &other) const { return this->_it == other._it; }
             bool operator==(list_node *ptr) const { return _it == ptr; }
             bool operator!=(const const_reverse_iterator &other) const { return !(*this == other); }
             bool operator!=(list_node *ptr) const { return !(*this == ptr); }
 
-            reference operator*() const { return *_it; }
-            pointer operator->() const { return _it.operator->(); }
-
             const_reverse_iterator &operator++() {
-                --_it;
-                return *this;
-            }
-            const_reverse_iterator operator++(int) { return _it--; }
-            const_reverse_iterator &operator--() {
                 ++_it;
                 return *this;
             }
-            const_reverse_iterator operator--(int) { return _it++; }
+            const_reverse_iterator operator++(int) { return _it++; }
+            const_reverse_iterator &operator--() {
+                --_it;
+                return *this;
+            }
+            const_reverse_iterator operator--(int) { return _it--; }
+
+            reference operator*() const { return *_it; }
+            pointer operator->() const { return _it.operator->(); }
 
         private:
-            iterator _it;
+            reverse_iterator _it;
 
             const_reverse_iterator(list_node *ptr) : _it(ptr) {};
         };
 
         /* Constructors/Destructors.  */
         list();
-        list(size_t n, const value_type &val);
-        list(size_t n, value_type &&val);
+        list(size_type n, const value_type &val);
         explicit list(const list &other);
         explicit list(list &&other) noexcept;
         explicit list(std::initializer_list<value_type> &il);
@@ -298,13 +301,11 @@ namespace adt {
         void reverse() noexcept;
 
     private:
-        template<typename V>
-        void _fill_list(size_type n, V val);
         template<typename Container>
         void _copy_from_container(const Container& other);
         void _push_empty(list_node *new_node);
         void _push_front(list_node *new_node);
-        void _push_middle(list_node *where, list_node *new_node);
+        iterator _push_middle(list_node *where, list_node *new_node);
         void _push_back(list_node *new_node);
         void _pop_empty();
         void _remove_node(list_node *to_delete);
@@ -327,12 +328,21 @@ namespace adt {
 
     template<typename T>
     list<T>::list(size_type n, const value_type &val) : _head(nullptr), _size(n) {
-        _fill_list<const value_type&>(val);
-    }
+        list_node *new_node;
 
-    template<typename T>
-    list<T>::list(size_type n, value_type &&val) : _head(nullptr), _size(n) {
-        _fill_list<value_type&&>(std::forward<value_type>(val));
+        _sentinel = new list_node();
+
+        if (n != 0) {
+            _head = new list_node(val);
+            _sentinel->previous = _head;
+
+            for (size_t i = 1; i < n; i++) {
+                new_node = new list_node(val);
+                _push_back(new_node);
+            }
+
+            _size = n;
+        }
     }
 
     template<typename T>
@@ -386,7 +396,7 @@ namespace adt {
 
     template<typename T>
     list_t::const_iterator list<T>::end() const noexcept {
-        return const_iterator(_sentinel);
+        return const_cast<list<T>*>(this)->end();
     }
 
     template<typename T>
@@ -406,27 +416,27 @@ namespace adt {
 
     template<typename T>
     list_t::const_reverse_iterator list<T>::rend() const noexcept {
-        return const_reverse_iterator(_sentinel);
+        return const_cast<list<T>*>(this)->rend();
     }
 
     template<typename T>
     list_t::const_iterator list<T>::cbegin() const noexcept {
-        return const_iterator(_head);
+        return const_cast<list<T>*>(this)->begin();
     }
 
     template<typename T>
     list_t::const_iterator list<T>::cend() const noexcept {
-        return const_iterator(_sentinel);
+        return const_cast<list<T>*>(this)->end();
     }
 
     template<typename T>
     list_t::const_reverse_iterator list<T>::crbegin() const noexcept {
-        return const_reverse_iterator(_sentinel->previous != nullptr ? _sentinel->previous : _sentinel);
+        return const_cast<list<T>*>(this)->rbegin();
     }
 
     template<typename T>
     list_t::const_reverse_iterator list<T>::crend() const noexcept {
-        return const_reverse_iterator(_sentinel);
+        return const_cast<list<T>*>(this)->rend();
     }
 
     template<typename T>
@@ -483,7 +493,10 @@ namespace adt {
                 _pop_empty();
             } else {
                 _head = _head->next;
-                if (_head) _head->previous = nullptr;
+                if (_head) {
+                    delete _head->previous;
+                    _head->previous = _sentinel;
+                }
             }
         }
     }
@@ -513,6 +526,7 @@ namespace adt {
             }
             else {
                 _sentinel->previous = _sentinel->previous->previous;
+                delete _sentinel->previous->next;
                 _sentinel->previous->next = _sentinel;
             }
         }
@@ -534,8 +548,8 @@ namespace adt {
         iterator it;
 
         if (n > 0) {
-            it = _push_middle(new list_node(val));
-            for (size_type i = 1 ; i < n ; i++) _push_middle(new list_node(val));
+            it = _push_middle(pos._it._ptr, new list_node(val));
+            for (size_type i = 1 ; i < n ; i++) _push_middle(pos._it._ptr, new list_node(val));
         }
 
         return it;
@@ -548,19 +562,21 @@ namespace adt {
 
     template<typename T>
     list_t::iterator list<T>::erase(const_iterator pos) {
-        auto it = ++pos._it;
+        auto it = pos._it;
+        ++it;
 
-        _remove_node(pos._it_.ptr);
+        _remove_node(pos._it._ptr);
         return it;
     }
 
     template<typename T>
     list_t::iterator list<T>::erase(const_iterator first, const_iterator last) {
-        auto it = first;
+        while (first != last) {
+            erase(first++);
+        }
 
-        while (it != last) it = erase(it);
-
-        return it;
+        /* TODO: check this.  */
+        return last._it;
     }
 
     template<typename T>
@@ -583,14 +599,16 @@ namespace adt {
             to_delete->next = nullptr;
             delete to_delete;
         }
+        _head = _sentinel;
+        _head->previous = nullptr;
         _size = 0;
     }
 
     template<typename T>
     void list<T>::remove(const value_type &val) {
-        list_node *current = _head, save, end = _sentinel;
+        list_node *current = _head, *save;
 
-        while (current != end) {
+        while (current != _sentinel) {
             if (current->data == val) {
                 break;
             }
@@ -617,11 +635,7 @@ namespace adt {
     template<typename T>
     void list<T>::sort() {
         if (!empty()) {
-            _head->previous = _sentinel->previous;
-            _sentinel->previous->next = nullptr;
-            _merge_sort(default_comp_sort());
-            _head->previous->next = _sentinel;
-            _head->previous = _sentinel;
+            _merge_sort<default_comp_sort>(&_head, default_comp_sort());
         }
     }
 
@@ -629,50 +643,33 @@ namespace adt {
     template<class Compare>
     void list<T>::sort(Compare comp) {
         if (!empty()) {
-            _head->previous = _sentinel->previous;
-            _sentinel->previous->next = nullptr;
-            _merge_sort(default_comp_sort());
-            _head->previous->next = _sentinel;
-            _head->previous = _sentinel;
+            _merge_sort<Compare>(&_head, comp);
         }
     }
 
     template<typename T>
     void list<T>::reverse() noexcept {
-        list_node *current = _head, *prev = _sentinel, *next;
+        list_node *prev, *current = _head, *cached_head = _head;
+        /* Temporarily pretend we dont have a sentinel node.  */
+        _sentinel->previous->next = nullptr;
+        _head->previous = nullptr;
 
-        while (current != _sentinel) {
-            next = current->next;
+        while (current != nullptr) {
+            prev = current->previous;
+            current->previous = current->next;
             current->next = prev;
-
-            prev = current;
-            current = next;
+            current = current->previous;
         }
-        _head = prev;
+
+        if (prev != nullptr) {
+            _head = prev->previous;
+        }
+        _head->previous = _sentinel;
+        cached_head->next = _sentinel;
+        _sentinel->previous = cached_head;
     }
 
     /* Private member functions.  */
-    template<typename T>
-    template<typename V>
-    void list<T>::_fill_list(list::size_type n, V val) {
-        list_node *new_node;
-
-        _sentinel = new list_node();
-
-        if (n == 0) {
-            return;
-        }
-
-        _head = new list_node(std::forward<V>(val));
-        _sentinel->next = _head;
-        _sentinel->previous = _head;
-
-        for (size_t i = 1 ; i < n ; i++) {
-            new_node = new list_node(std::forward<V>(val));
-            _push_back(new_node);
-        }
-    }
-
     template<typename T>
     template<typename Container>
     void list<T>::_copy_from_container(const Container &other) {
@@ -682,11 +679,11 @@ namespace adt {
         _sentinel->previous = _head;
         _head->previous = _sentinel;
 
-        list_iterator it = ++(other.begin());
-        list_iterator end = other.end();
+        iterator it = ++(other.begin());
+        iterator end = other.end();
 
         for (; it != end ; it++) {
-            std::shared_ptr<Node> new_node(new Node(*it));
+            list_node *new_node(new list_node(*it));
             _sentinel->previous->next = new_node;
             new_node->previous = _sentinel->previous;
             _sentinel->previous = new_node;
@@ -699,6 +696,7 @@ namespace adt {
     void list<T>::_push_empty(list_node *new_node) {
         _head = new_node;
         _sentinel->previous = _head;
+        _head->previous = _sentinel;
         _head->next = _sentinel;
         _size = 1;
     }
@@ -718,12 +716,16 @@ namespace adt {
     }
 
     template<typename T>
-    void list<T>::_push_middle(list_node *where, list_node *new_node) {
+    list_t::iterator list<T>::_push_middle(list_node *where, list_node *new_node) {
+        list_node *pos;
+
         if (where == _head) {
             _push_front(new_node);
+            pos = _head;
         }
         else if (where == _sentinel) {
             _push_back(new_node);
+            pos = _sentinel->previous;
         }
         else {
             new_node->next = where;
@@ -731,7 +733,10 @@ namespace adt {
             where->previous->next = new_node;
             where->previous = new_node;
             ++_size;
+            pos = new_node;
         }
+
+        return iterator(pos);
     }
 
     template<typename T>
@@ -751,6 +756,7 @@ namespace adt {
     template<typename T>
     void list<T>::_pop_empty() {
         delete _head;
+        _head = _sentinel;
         _sentinel->next = nullptr;
         _sentinel->previous = nullptr;
     }
@@ -770,6 +776,11 @@ namespace adt {
                 delete node;
                 --_size;
             }
+        }
+
+        if (_size == 0) {
+            _head = _sentinel;
+            _sentinel->previous = nullptr;
         }
     }
 
@@ -792,7 +803,7 @@ namespace adt {
     void list<T>::_merge_sort(list_node **head, Compare comp) {
         list_node *left_half, *right_half;
 
-        if (*head != nullptr && (*head)->next != nullptr) {
+        if (*head != _sentinel && (*head)->next != _sentinel) {
             _split_to_halves(*head, &left_half, &right_half);
 
             _merge_sort(&left_half, comp);
@@ -811,9 +822,9 @@ namespace adt {
         slow_ptr = current;
         fast_ptr = current->next;
 
-        while (fast_ptr != nullptr) {
+        while (fast_ptr != _sentinel) {
             fast_ptr = fast_ptr->next;
-            if (fast_ptr != nullptr) {
+            if (fast_ptr != _sentinel) {
                 slow_ptr = slow_ptr->next;
                 fast_ptr = fast_ptr->next;
             }
@@ -821,7 +832,7 @@ namespace adt {
 
         *left_half_head = current;
         *right_half_head = slow_ptr->next;
-        slow_ptr->next = nullptr;
+        slow_ptr->next = _sentinel;
     }
 
     /* Merges 2 lists and returns the new head.  */
@@ -832,7 +843,7 @@ namespace adt {
 
         left_current = left_list_head;
         right_current = right_list_head;
-        if (right_list_head == nullptr) {
+        if (right_list_head == _sentinel) {
             sorted_list_head = left_list_head;
         } else {
             if (comp(left_current->data, right_current->data)) {
@@ -846,7 +857,7 @@ namespace adt {
 
         /* Connect nodes in a sorted way.  */
         sorted_current = sorted_list_head;
-        while (left_current != nullptr && right_current != nullptr) {
+        while (left_current != _sentinel && right_current != _sentinel) {
             if (comp(left_current->data, right_current->data)) {
                 sorted_current->next = left_current;
                 left_current->previous = sorted_current;
@@ -860,10 +871,18 @@ namespace adt {
         }
 
         /* Connect remaining nodes.  */
-        remaining = left_current ? left_current : right_current;
+        remaining = left_current != _sentinel ? left_current : right_current;
+
+        if (right_current == _sentinel) {
+            list_node *current = remaining;
+            while (current->next != _sentinel) current = current->next;
+            current->next = _sentinel;
+            _sentinel->previous = current;
+        }
+
         sorted_current->next = remaining;
         /* Connect new head to the last node of the list.  */
-        sorted_list_head->previous = remaining->previous;
+        sorted_list_head->previous = _sentinel;
         remaining->previous = sorted_current;
 
         return sorted_list_head;

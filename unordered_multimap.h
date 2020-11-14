@@ -382,8 +382,8 @@ namespace adt {
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
-    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::insert(const_reference val) {
-        return _hash_insert<unordered_multimap<K, V, Hash, Eq>, iterator, key_type, const_reference>(this, val.first, val, val);
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::insert(const value_type &val) {
+        return _hash_insert<unordered_multimap<K, V, Hash, Eq>, iterator, key_type, const value_type&>(this, val.first, val, val);
     }
 
     template<typename K, typename V, typename Hash, typename Eq>

@@ -32,11 +32,11 @@ namespace adt {
         using internal_ptr = value_type *;
 
         internal_ptr *_slots;
-        ctrl_t *_ctrls;
+        ctrl_t *_ctrls{};
         hasher _hasher;
         size_type _size;
         size_type _capacity;
-        size_type _first_elem_pos;
+        size_type _first_elem_pos{};
         key_equal _keq;
 
         struct hash_info {
@@ -72,13 +72,13 @@ namespace adt {
             friend class unordered_set;
 
             template<class Container, typename R, typename K, typename V, typename... Args>
-            friend R _hash_insert(Container *cnt, const K &key, V val, Args &&... args);
+            friend R hash_internal::_hash_insert(Container *cnt, const K &key, V val, Args &&... args);
 
             template<class Container>
-            friend container::iterator _hash_find(Container *cnt, const container::key_type &key);
+            friend container::iterator hash_internal::_hash_find(Container *cnt, const container::key_type &key);
 
             template<class Container>
-            friend container::find_insert_info _hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash);
+            friend container::find_insert_info hash_internal::_hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash);
 
             using internal_ptr = unordered_set::internal_ptr;
 
@@ -121,13 +121,13 @@ namespace adt {
                 return temp;
             }
 
-            reference operator*() const { return *(*(this->_ptr)); }
-            pointer operator->() const { return *(this->_ptr); }
+            reference operator*() const { return *(*_ptr); }
+            pointer operator->() const { return (*_ptr); }
 
         private:
             internal_ptr *_ptr;
 
-            iterator(internal_ptr *ptr = nullptr) : _ptr(ptr) {}
+            iterator(internal_ptr *ptr) : _ptr(ptr) {}
         };
 
         /* Constructors/Destructors.  */
@@ -182,34 +182,34 @@ namespace adt {
         }
 
         template<class Container>
-        friend void _hash_construct(Container *cnt);
+        friend void hash_internal::_hash_construct(Container *cnt);
 
         template<class Container>
-        friend void _hash_destruct(Container *cnt);
+        friend void hash_internal::_hash_destruct(Container *cnt);
 
         template<class Container, typename R, typename K, typename V, typename... Args>
-        friend R _hash_insert(Container *cnt, const K &key, V val, Args &&... args);
+        friend R hash_internal::_hash_insert(Container *cnt, const K &key, V val, Args &&... args);
 
         template<class Container>
-        friend std::pair<container::size_type, container::size_type> _hash_erase(Container *cnt, container::internal_ptr *ptr, bool erase_all);
+        friend std::pair<container::size_type, container::size_type> hash_internal::_hash_erase(Container *cnt, container::internal_ptr *ptr, bool erase_all);
 
         template<class Container>
-        friend void _hash_clear(Container *cnt);
+        friend void hash_internal::_hash_clear(Container *cnt);
 
         template<class Container>
-        friend container::iterator _hash_find(Container *cnt, const container::key_type &key);
+        friend container::iterator hash_internal::_hash_find(Container *cnt, const container::key_type &key);
 
         template<class Container>
-        friend void _hash_rehash(Container *cnt);
+        friend void hash_internal::_hash_rehash(Container *cnt);
 
         template<class Container>
-        friend container::hash_info _hash_get_hash_info(Container *cnt, const container::key_type &key);
+        friend container::hash_info hash_internal::_hash_get_hash_info(Container *cnt, const container::key_type &key);
 
         template<class Container>
-        friend void _hash_check_load_factor(Container *cnt, container::size_type, uint64_t hash, container::size_type &pos);
+        friend void hash_internal::_hash_check_load_factor(Container *cnt, container::size_type, uint64_t hash, container::size_type &pos);
 
         template<class Container>
-        friend container::find_insert_info _hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash);
+        friend container::find_insert_info hash_internal::_hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash);
 
     private:
         void _rehash();
@@ -221,7 +221,7 @@ namespace adt {
         std::pair<iterator, bool> _handle_elem_found(const iterator &it, to_delete obj);
         std::pair<iterator, bool> _handle_elem_not_found(const iterator &it);
         
-        internal_ptr _construct_new_element(const_reference val);
+        internal_ptr _construct_new_element(const value_type &val);
         internal_ptr _construct_new_element(internal_ptr val);
         internal_ptr _construct_new_element(value_type &&val);
         
@@ -335,7 +335,7 @@ namespace adt {
 
     template<typename Key, class Hash, class Eq>
     uset_t::iterator unordered_set<Key, Hash, Eq>::erase(const_iterator pos) {
-        return iterator(&(_slots[_erase(pos._it._ptr).first]));
+        return iterator(&(_slots[_erase(pos._ptr).first]));
     }
 
     template<typename Key, class Hash, class Eq>
@@ -365,7 +365,7 @@ namespace adt {
 
     template<typename Key, class Hash, class Eq>
     uset_t::size_type unordered_set<Key, Hash, Eq>::count(const key_type &key) const {
-        return find(key)._it._ptr != &_slots[_capacity] ? 1 : 0;
+        return find(key)._ptr != &_slots[_capacity] ? 1 : 0;
     }
 
     template<typename Key, class Hash, class Eq>

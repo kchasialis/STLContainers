@@ -1,6 +1,6 @@
 #pragma once
 
-#include <memory>
+#include "rbtree_internal.h"
 
 #define multiset_t typename multiset<Key, Less>
 
@@ -283,11 +283,11 @@ namespace adt {
         iterator _handle_elem_found(internal_ptr ptr, value_type &&val);
         iterator _handle_elem_found(internal_ptr ptr, multiset_node *val);
         iterator _handle_elem_not_found(internal_ptr ptr);
-        key_type &_get_key(rb_node<node_type> *tnode);
+        key_type &_get_key(internal_ptr ptr);
         bool _is_equal_key(const key_type &lhs_key, const key_type &rhs_key) const;
         size_type _erase_list(internal_ptr erase_ptr);
         size_type _erase_node(internal_ptr erase_ptr);
-        std::pair<rb_node<node_type> *, size_type> _erase(const_iterator pos, bool erase_all);
+        std::pair<internal_ptr, size_type> _erase(const_iterator pos, bool erase_all);
     };
 
     /* Implementation.  */
@@ -431,19 +431,19 @@ namespace adt {
 
     template<typename Key, class Less>
     multiset_t::iterator multiset<Key, Less>::insert(const value_type &val) {
-        return _rbtree_insert<multiset<Key, Less>, iterator, key_type, const value_type&>(this, val, val);
+        return _rbtree_insert<multiset<Key, Less>, iterator, key_type, const value_type&>(this, val, val, val);
     }
 
     template<typename Key, class Less>
     multiset_t::iterator multiset<Key, Less>::insert(value_type &&val) {
-        return _rbtree_insert<set<Key, Less>, iterator, key_type, value_type&&>(this, val, std::forward<value_type>(val));
+        return _rbtree_insert<multiset<Key, Less>, iterator, key_type, value_type&&>(this, val, std::forward<value_type>(val), std::forward<value_type>(val));
     }
 
     template<typename Key, class Less>
     template<class... Args>
     multiset_t::iterator multiset<Key, Less>::emplace(Args &&... args) {
-        internal_ptr val = new rb_node<node_type>(std::forward<Args>(args)...);
-        return _rbtree_insert<set<Key, Less>, std::pair<iterator, bool>, key_type, internal_ptr>(this, val->data, val);
+        multiset_node *val = new multiset_node(std::forward<Args>(args)...);
+        return _rbtree_insert<multiset<Key, Less>, iterator, key_type, multiset_node*>(this, val->data, val, val);
     }
 
     template<typename Key, class Less>
@@ -516,13 +516,13 @@ namespace adt {
 
     template<typename Key, class Less>
     multiset_t::iterator multiset<Key, Less>::upper_bound(const key_type &key) {
-        internal_ptr bound = _rbtree_find_bound<set<Key, Less>>(this, _root, key);
+        internal_ptr bound = _rbtree_find_bound<multiset<Key, Less>>(this, _root, key);
 
         if (bound == nullptr) {
             return end();
         } else {
             if (_is_equal_key(bound->data, key)) {
-                return iterator(_rbtree_successor<set<Key, Less>>(bound));
+                return iterator(_rbtree_successor<multiset<Key, Less>>(bound));
             } else {
                 return iterator(bound);
             }
@@ -611,8 +611,8 @@ namespace adt {
     }
 
     template<typename Key, class Less>
-    multiset_t::key_type &multiset<Key, Less>::_get_key(internal_ptr tnode) {
-        return tnode->data->data;
+    multiset_t::key_type &multiset<Key, Less>::_get_key(internal_ptr ptr) {
+        return ptr->data->data;
     }
 
     template<typename Key, class Less>
@@ -654,7 +654,6 @@ namespace adt {
     template<typename Key, class Less>
     std::pair<multiset_t::internal_ptr, multiset_t::size_type> multiset<Key, Less>::_erase(const_iterator pos, bool erase_all) {
         internal_ptr save, successor, next_elem_ptr, erase_ptr;
-        multiset_node *current, *to_delete;
         size_t count = 0;
 
         if (pos != end()) {
@@ -662,7 +661,7 @@ namespace adt {
             _root->parent = nullptr;
 
             successor = _rbtree_successor<multiset<Key, Less>>(pos._ptr);
-            erase_ptr = _rbtree_erase<set<Key, Less>>(this, pos._ptr, successor);
+            erase_ptr = _rbtree_erase<multiset<Key, Less>>(this, pos._ptr, successor);
 
             if (erase_ptr != _root) {
                 next_elem_ptr = erase_ptr == successor ? pos._ptr : successor;
@@ -677,7 +676,11 @@ namespace adt {
 
                 return {successor != nullptr ? next_elem_ptr : end(), count};
             } else {
-
+                delete _root->data;
+                delete _root;
+                _sentinel->left = nullptr;
+                _root = nullptr;
+                _size = 0;
             }
         }
 
