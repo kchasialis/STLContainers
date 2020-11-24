@@ -1,13 +1,14 @@
 #include <algorithm>
 #include <cassert>
 #include <iostream>
+#include <set>
 
-#include "vector.h"
-#include "unordered_set.h"
 #include "list.h"
+#include "vector.h"
+#include "set.h"
+#include "unordered_set.h"
 /*
 #include "map.h"
-#include "set.h"
 #include "multiset.h"
 #include "multimap.h"
 #include "unordered_set.h"
@@ -159,14 +160,14 @@ void run_list_test() {
     }
     assert(mylist.size() == 1500);
 
-    /* sort() test.
-     * TODO: sort() goes into inf loop, fix it.
-     * */
+    /* sort() test.  */
     mylist.sort<string_comp>(string_comp());
     assert(std::is_sorted(mylist.begin(), mylist.end()));
 
     /* reverse() test.  */
     mylist.reverse();
+
+    /* make sure we hve compatibility with STL iterators.  */
     assert(std::is_sorted(mylist.rbegin(), mylist.rend()));
 }
 
@@ -359,6 +360,164 @@ void run_vector_test() {
     assert(test_sum == sum);
 }
 
+struct ReverseSorted {
+    bool operator()(const int& lhs, const int& rhs) {
+        return lhs >= rhs;
+    }
+};
+
+void run_set_test() {
+    adt::set<int> set_test;
+    /* We will use std::set to check our lower/upper_bound functions.  */
+    std::set<int> std_set_test;
+    size_t sum, test_sum, n_elems_test, index;
+
+    srand(time(nullptr));
+
+    /* insert(), find() test.  */
+    sum = 0;
+    n_elems_test = 0;
+    for (size_t i = 0 ; i < 100 ; i++) {
+        auto val = rand();
+        if (set_test.find(val) == set_test.end()) {
+            auto p = set_test.insert(val);
+            assert(*(p.first) == val);
+            assert(p.second);
+            sum += val;
+            n_elems_test++;
+        }
+    }
+    assert(set_test.size() == n_elems_test);
+
+    /* iterators test.  */
+    test_sum = 0;
+    for (auto it = set_test.begin() ; it != set_test.end() ; it++) {
+        test_sum += *it;
+    }
+    std::cout << std::endl;
+    assert(test_sum == sum);
+
+    /* these should not compile, and they dont.
+    for (auto it = set_test.begin() ; it != set_test.end() ; it++) {
+        *it = 15;
+    }
+    for (auto it = set_test.cbegin() ; it != set_test.cend() ; it++) {
+        *it = 15;
+    }
+    for (auto it = set_test.rbegin() ; it != set_test.rend() ; it++) {
+        *it = 15;
+    }
+    for (auto it = set_test.crbegin() ; it != set_test.crend() ; it++) {
+        *it = 15;
+    }  */
+
+    /* clear() test.  */
+    set_test.clear();
+    assert(set_test.empty());
+    assert(set_test.begin() == set_test.end());
+    assert(set_test.rbegin() == set_test.rend());
+
+    /* emplace() test.  */
+    sum = 0;
+    n_elems_test = 0;
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        auto val = rand();
+        if (set_test.find(val) == set_test.end()) {
+            auto p = set_test.emplace(val);
+            assert(*(p.first) == val);
+            assert(p.second);
+            sum += val;
+            n_elems_test++;
+        }
+    }
+    assert(set_test.size() == n_elems_test);
+
+    /* find() test.  */
+    test_sum = 0;
+    for (auto it = set_test.cbegin() ; it != set_test.cend() ; it++) {
+        auto p = set_test.find(*it);
+        assert(*p == *it);
+        test_sum += *p;
+    }
+    assert(test_sum == sum);
+
+    /* erase() test.  */
+    for (auto it = set_test.begin() ; it != set_test.end() ;) {
+        it = set_test.erase(it);
+    }
+    assert(set_test.empty());
+    assert(set_test.begin() == set_test.end());
+    assert(set_test.rbegin() == set_test.rend());
+
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        auto val = rand();
+        if (set_test.find(val) == set_test.end()) {
+            auto p = set_test.insert(val);
+            assert(*(p.first) == val);
+            assert(p.second);
+        }
+    }
+
+    /* erase(range) test.  */
+    set_test.erase(set_test.begin(), set_test.end());
+    assert(set_test.empty());
+    assert(set_test.begin() == set_test.end());
+    assert(set_test.rbegin() == set_test.rend());
+
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        auto val = i;
+        if (set_test.find(val) == set_test.end()) {
+            std_set_test.insert(val);
+            auto p = set_test.insert(val);
+            assert(*(p.first) == val);
+            assert(p.second);
+        }
+    }
+
+    /* lower(), upper() bound check.  */
+    auto myset_lower_b = set_test.lower_bound(150);
+    auto myset_upper_b = set_test.upper_bound(150);
+    auto stdset_lower_b = set_test.lower_bound(150);
+    auto stdset_upper_b = set_test.upper_bound(150);
+
+    auto myset_it = myset_lower_b;
+    auto stdset_it = stdset_lower_b;
+    for ( ; stdset_it != stdset_upper_b ; stdset_it++, myset_it++) {
+        assert(*myset_it == *stdset_it);
+    }
+
+    myset_it = myset_lower_b;
+    stdset_it = stdset_lower_b;
+    for ( ; myset_it != myset_upper_b ; myset_it++, stdset_it++) {
+        assert(*myset_it == *stdset_it);
+    }
+
+    /* equal_range() test.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        auto myrange = set_test.equal_range(i);
+        index = 0;
+        for (auto it = myrange.first ; it != myrange.second ; it++, index++) {
+            assert(*it == i);
+        }
+        assert(index == 1);
+    }
+
+    auto myrange = set_test.equal_range(-15);
+    assert(myrange.first == set_test.end());
+    assert(myrange.second == set_test.end());
+
+    /* count() test.  */
+    for (size_t i = 0 ; i < 1500 ; i++) {
+        assert(set_test.count(i) == 1);
+    }
+
+    assert(set_test.count(-15) == 0);
+
+    /* sets are sorted, this also asserts compatibility with STL iterators.  */
+    assert(std::is_sorted(set_test.begin(), set_test.end()));
+    assert(std::is_sorted(set_test.rbegin(), set_test.rend(), ReverseSorted()));
+}
+
 void run_unordered_set_test() {
     adt::unordered_set<int> set_test;
     size_t sum, test_sum, index;
@@ -462,13 +621,13 @@ void run_unordered_set_test() {
 }
 
 int main() {
-    run_list_test();
-    run_vector_test();
-//    run_set_test();
+//    run_list_test();
+//    run_vector_test();
+    run_set_test();
 //    run_multiset_test();
 //    run_map_test();
 //    run_multimap_test();
-    run_unordered_set_test();
+//    run_unordered_set_test();
 //    run_unordered_multiset_test();
 //    run_unordered_map_test();
 //    run_unordered_multimap_test();

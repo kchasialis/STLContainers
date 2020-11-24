@@ -48,7 +48,7 @@ namespace adt {
             internal_ptr ptr;
 
             handle_return_overload() : ptr(nullptr) {}
-            explicit handle_return_overload(value_type *_ptr) : ptr(_ptr) {}
+            explicit handle_return_overload(internal_ptr _ptr) : ptr(_ptr) {}
         };
 
         struct tag_ignore{};
@@ -91,17 +91,17 @@ namespace adt {
                     return *this;
                 }
 
-                if (_ptr->_right) {
-                    current = _ptr->_right;
-                    while (current->_left != nullptr) {
-                        current = current->_left;
+                if (_ptr->right) {
+                    current = _ptr->right;
+                    while (current->left != nullptr) {
+                        current = current->left;
                     }
                 }
                 else {
-                    current = _ptr->_parent;
-                    while (current != nullptr && _ptr == current->_right) {
+                    current = _ptr->parent;
+                    while (current != nullptr && _ptr == current->right) {
                         _ptr = current;
-                        current = current->_parent;
+                        current = current->parent;
                     }
                 }
 
@@ -121,17 +121,17 @@ namespace adt {
                     return *this;
                 }
 
-                if (_ptr->_left) {
-                    current = _ptr->_left;
-                    while (current->_right != nullptr) {
-                        current = current->_right;
+                if (_ptr->left) {
+                    current = _ptr->left;
+                    while (current->right != nullptr) {
+                        current = current->right;
                     }
                 }
                 else {
-                    current = _ptr->_parent;
-                    while (current->_parent != nullptr && _ptr == current->_left) {
+                    current = _ptr->parent;
+                    while (current->parent != nullptr && _ptr == current->left) {
                         _ptr = current;
-                        current = current->_parent;
+                        current = current->parent;
                     }
                 }
 
@@ -144,17 +144,20 @@ namespace adt {
                 return temp;
             }
 
-            reference operator*() const { return _ptr->_val; }
-            pointer operator->() const { return &(_ptr->_val); }
+            reference operator*() const { return _ptr->data; }
+            pointer operator->() const { return &(_ptr->data); }
 
             void swap(iterator &lhs, iterator& rhs) {
                 std::swap(lhs, rhs);
             }
 
+            template<class Container>
+            friend container::iterator rbtree_internal::_rbtree_find(Container *cnt, const container::key_type &key);
+
         private:
             internal_ptr _ptr;
 
-            iterator(internal_ptr *ptr = nullptr) : _ptr(ptr) {}
+            iterator(internal_ptr ptr = nullptr) : _ptr(ptr) {}
         };
 
         class reverse_iterator {
@@ -267,6 +270,54 @@ namespace adt {
             swap(lhs._size, rhs._size);
         }
 
+        template<class Container>
+        friend void rbtree_internal::_rbtree_destruct(rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_left_of(rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_right_of(rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_parent_of(rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_grandparent_of(rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend void rbtree_internal::_rbtree_set_color(rb_node<container::node_type> *tnode, color_t color);
+
+        template<class Container>
+        friend color_t rbtree_internal::_rbtree_get_color(rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend void rbtree_internal::_rbtree_rotate_right(rb_node<container::node_type> **root, rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend void rbtree_internal::_rbtree_rotate_left(rb_node<container::node_type> **root, rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend void rbtree_internal::_rbtree_restore_balance(rb_node<container::node_type> **root, rb_node<container::node_type> *sentinel, rb_node<container::node_type> *tnode, balance_t btype);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_successor(rb_node<container::node_type> *tnode);
+
+        template<typename Container, typename K, typename V>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_bst_insert(Container *cnt, bool &added_new, const K &key, V val);
+
+        template<class Container, typename R, typename K, typename V, typename... Args>
+        friend R rbtree_internal::_rbtree_insert(Container *cnt, const K &key, V val, Args &&... args);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_erase(Container *cnt, rb_node<container::node_type> *current, rb_node<container::node_type> *successor);
+
+        template<class Container>
+        friend container::iterator rbtree_internal::_rbtree_find(Container *cnt, const container::key_type &key);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_find_bound(Container *cnt, rb_node<container::node_type> *tnode, const container::key_type &key);
+
     private:
         internal_ptr _copy_tree(internal_ptr other_root);
         internal_ptr _construct_new_element(const value_type &val);
@@ -331,6 +382,8 @@ namespace adt {
             while (current->left != nullptr) {
                 current = current->left;
             }
+        } else {
+            current = _sentinel;
         }
 
         return iterator(current);
@@ -353,12 +406,14 @@ namespace adt {
 
     template<typename Key, class Less>
     set_t::reverse_iterator set<Key, Less>::rbegin() noexcept {
-        rb_node<node_type> *current = _root;
+        internal_ptr current = _root;
 
         if (current) {
             while (current->right != nullptr) {
                 current = current->right;
             }
+        } else {
+            current = _sentinel;
         }
 
         return reverse_iterator(current);
@@ -433,6 +488,7 @@ namespace adt {
     template<class... Args>
     std::pair<set_t::iterator, bool> set<Key, Less>::emplace(Args &&... args) {
         internal_ptr val = new rb_node<node_type>(std::forward<Args>(args)...);
+
         return _rbtree_insert<set<Key, Less>, std::pair<iterator, bool>, key_type, internal_ptr>(this, val->data, val, to_delete(val));
     }
 
@@ -458,6 +514,8 @@ namespace adt {
     template<typename Key, class Less>
     void set<Key, Less>::clear() noexcept {
         _rbtree_destruct<set<Key, Less>>(_root);
+        _root = nullptr;
+        _size = 0;
     }
 
     template<typename Key, class Less>
@@ -587,7 +645,7 @@ namespace adt {
     template<typename Key, class Less>
     std::pair<rb_node<set_t::node_type> *, set_t::size_type> set<Key, Less>::_erase(const_iterator pos) {
         internal_ptr save, successor, next_elem_ptr, erase_ptr;
-        size_t count = 0;
+        size_type count = 0;
 
         if (pos != end()) {
             save = _sentinel;
@@ -608,7 +666,7 @@ namespace adt {
                 --_size;
                 count++;
 
-                return {successor != nullptr ? next_elem_ptr : end(), count};
+                return {successor != nullptr ? next_elem_ptr : _sentinel, count};
             }
             else {
                 delete _root;
@@ -618,7 +676,7 @@ namespace adt {
             }
         }
 
-        return {end(), count};
+        return {_sentinel, count};
     }
 }
 

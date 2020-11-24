@@ -90,7 +90,7 @@ namespace rbtree_internal {
             left_right_child = left_child->right;
 
             tnode->left = left_right_child;
-            if (left_right_child) left_right_child->_parent = tnode;
+            if (left_right_child) left_right_child->parent = tnode;
 
             p_node = tnode->parent;
             left_child->parent = p_node;
@@ -116,7 +116,7 @@ namespace rbtree_internal {
             right_child = tnode->right;
             right_left_child = right_child->left;
 
-            tnode->_right = right_left_child;
+            tnode->right = right_left_child;
             if (right_left_child) right_left_child->parent = tnode;
 
             p_node = tnode->parent;
@@ -136,122 +136,122 @@ namespace rbtree_internal {
     }
 
     template<class Container>
-    void _rbtree_restore_balance(rb_node<container::node_type> *root, rb_node<container::node_type> *sentinel, rb_node<container::node_type> *tnode, balance_t btype) {
+    void _rbtree_restore_balance(rb_node<container::node_type> **root, rb_node<container::node_type> *sentinel, rb_node<container::node_type> *tnode, balance_t btype) {
         rb_node<container::node_type> *sibling, *uncle;
 
         if (btype == DELETION) {
-            while (tnode != root && _rbtree_get_color(tnode) == BLACK) {
+            while (tnode != *root && _rbtree_get_color<Container>(tnode) == BLACK) {
 
-                if (tnode == _rbtree_left_of(_rbtree_parent_of(tnode))) {
-                    sibling = _rbtree_right_of(_rbtree_parent_of(tnode));
+                if (tnode == _rbtree_left_of<Container>(_rbtree_parent_of<Container>(tnode))) {
+                    sibling = _rbtree_right_of<Container>(_rbtree_parent_of<Container>(tnode));
 
-                    if (_rbtree_get_color(sibling) == RED) {
-                        _rbtree_set_color(sibling, BLACK);
-                        _rbtree_set_color(_rbtree_parent_of(tnode), RED);
-                        _rbtree_rotate_left(&root, _rbtree_parent_of(tnode));
-                        sibling = _rbtree_right_of(_rbtree_parent_of(tnode));
+                    if (_rbtree_get_color<Container>(sibling) == RED) {
+                        _rbtree_set_color<Container>(sibling, BLACK);
+                        _rbtree_set_color<Container>(_rbtree_parent_of<Container>(tnode), RED);
+                        _rbtree_rotate_left<Container>(root, _rbtree_parent_of<Container>(tnode));
+                        sibling = _rbtree_right_of<Container>(_rbtree_parent_of<Container>(tnode));
                     }
 
-                    if (_rbtree_get_color(_rbtree_left_of(sibling)) == BLACK && _rbtree_get_color(_rbtree_right_of(sibling)) == BLACK) {
-                        _rbtree_set_color(sibling, RED);
-                        tnode = _rbtree_parent_of(tnode);
+                    if (_rbtree_get_color<Container>(_rbtree_left_of<Container>(sibling)) == BLACK && _rbtree_get_color<Container>(_rbtree_right_of<Container>(sibling)) == BLACK) {
+                        _rbtree_set_color<Container>(sibling, RED);
+                        tnode = _rbtree_parent_of<Container>(tnode);
                     } else {
-                        if (_rbtree_get_color(_rbtree_right_of(sibling)) == BLACK) {
-                            _rbtree_set_color(_rbtree_left_of(sibling), BLACK);
-                            _rbtree_set_color(sibling, RED);
-                            _rbtree_rotate_right(&root, sibling);
-                            sibling = _rbtree_right_of(_rbtree_parent_of(tnode));
+                        if (_rbtree_get_color<Container>(_rbtree_right_of<Container>(sibling)) == BLACK) {
+                            _rbtree_set_color<Container>(_rbtree_left_of<Container>(sibling), BLACK);
+                            _rbtree_set_color<Container>(sibling, RED);
+                            _rbtree_rotate_right<Container>(root, sibling);
+                            sibling = _rbtree_right_of<Container>(_rbtree_parent_of<Container>(tnode));
                         }
 
-                        _rbtree_set_color(sibling, _rbtree_get_color(_rbtree_parent_of(tnode)));
-                        _rbtree_set_color(_rbtree_parent_of(tnode), BLACK);
-                        _rbtree_set_color(_rbtree_right_of(sibling), BLACK);
-                        _rbtree_rotate_left(&root, _rbtree_parent_of(tnode));
-                        tnode = root;
+                        _rbtree_set_color<Container>(sibling, _rbtree_get_color<Container>(_rbtree_parent_of<Container>(tnode)));
+                        _rbtree_set_color<Container>(_rbtree_parent_of<Container>(tnode), BLACK);
+                        _rbtree_set_color<Container>(_rbtree_right_of<Container>(sibling), BLACK);
+                        _rbtree_rotate_left<Container>(root, _rbtree_parent_of<Container>(tnode));
+                        tnode = *root;
                     }
                 }
                 else {
-                    sibling = _rbtree_left_of(_rbtree_parent_of(tnode));
+                    sibling = _rbtree_left_of<Container>(_rbtree_parent_of<Container>(tnode));
 
-                    if (_rbtree_get_color(sibling) == RED) {
-                        _rbtree_set_color(sibling, BLACK);
-                        _rbtree_set_color(_rbtree_parent_of(tnode), RED);
-                        _rbtree_rotate_right(&root, _rbtree_parent_of(tnode));
-                        sibling = _rbtree_left_of(_rbtree_parent_of(tnode));
+                    if (_rbtree_get_color<Container>(sibling) == RED) {
+                        _rbtree_set_color<Container>(sibling, BLACK);
+                        _rbtree_set_color<Container>(_rbtree_parent_of<Container>(tnode), RED);
+                        _rbtree_rotate_right<Container>(root, _rbtree_parent_of<Container>(tnode));
+                        sibling = _rbtree_left_of<Container>(_rbtree_parent_of<Container>(tnode));
                     }
 
-                    if (_rbtree_get_color(_rbtree_right_of(sibling)) == BLACK && _rbtree_get_color(_rbtree_left_of(sibling)) == BLACK) {
-                        _rbtree_set_color(sibling, RED);
-                        tnode = _rbtree_parent_of(tnode);
+                    if (_rbtree_get_color<Container>(_rbtree_right_of<Container>(sibling)) == BLACK && _rbtree_get_color<Container>(_rbtree_left_of<Container>(sibling)) == BLACK) {
+                        _rbtree_set_color<Container>(sibling, RED);
+                        tnode = _rbtree_parent_of<Container>(tnode);
                     } else {
-                        if (_rbtree_get_color(_rbtree_left_of(sibling)) == BLACK) {
-                            _rbtree_set_color(_rbtree_right_of(sibling), BLACK);
-                            _rbtree_set_color(sibling, RED);
-                            _rbtree_rotate_left(&root, sibling);
-                            sibling = _rbtree_left_of(_rbtree_parent_of(tnode));
+                        if (_rbtree_get_color<Container>(_rbtree_left_of<Container>(sibling)) == BLACK) {
+                            _rbtree_set_color<Container>(_rbtree_right_of<Container>(sibling), BLACK);
+                            _rbtree_set_color<Container>(sibling, RED);
+                            _rbtree_rotate_left<Container>(root, sibling);
+                            sibling = _rbtree_left_of<Container>(_rbtree_parent_of<Container>(tnode));
                         }
 
-                        _rbtree_set_color(sibling, _rbtree_get_color(_rbtree_parent_of(tnode)));
-                        _rbtree_set_color(_rbtree_parent_of(tnode), BLACK);
-                        _rbtree_set_color(_rbtree_left_of(sibling), BLACK);
-                        _rbtree_rotate_right(&root, _rbtree_parent_of(tnode));
-                        tnode = root;
+                        _rbtree_set_color<Container>(sibling, _rbtree_get_color<Container>(_rbtree_parent_of<Container>(tnode)));
+                        _rbtree_set_color<Container>(_rbtree_parent_of<Container>(tnode), BLACK);
+                        _rbtree_set_color<Container>(_rbtree_left_of<Container>(sibling), BLACK);
+                        _rbtree_rotate_right<Container>(root, _rbtree_parent_of<Container>(tnode));
+                        tnode = *root;
                     }
                 }
             }
 
-            if (tnode != nullptr && _rbtree_get_color(tnode) != BLACK) {
-                _rbtree_set_color(tnode, BLACK);
+            if (tnode != nullptr && _rbtree_get_color<Container>(tnode) != BLACK) {
+                _rbtree_set_color<Container>(tnode, BLACK);
             }
         }
         else if (btype == INSERTION) {
             tnode->color = RED;
-            root->parent = nullptr;
+            (*root)->parent = nullptr;
 
-            while (tnode != sentinel && tnode != root) {
+            while (tnode != sentinel && tnode != *root) {
                 if (tnode->parent->color != RED) {
                     break;
                 }
 
-                if (_rbtree_parent_of(tnode) == _rbtree_left_of(_rbtree_grandparent_of(tnode))) {
+                if (_rbtree_parent_of<Container>(tnode) == _rbtree_left_of<Container>(_rbtree_grandparent_of<Container>(tnode))) {
 
-                    uncle = _rbtree_right_of(_rbtree_grandparent_of(tnode));
-                    if (_rbtree_color_of(uncle) == RED) {
+                    uncle = _rbtree_right_of<Container>(_rbtree_grandparent_of<Container>(tnode));
+                    if (_rbtree_get_color<Container>(uncle) == RED) {
                         /* Uncle RED means color-flip.  */
-                        _rbtree_set_color(_rbtree_parent_of(tnode), BLACK);
-                        _rbtree_set_color(_rbtree_grandparent_of(tnode), RED);
-                        _rbtree_set_color(uncle, BLACK);
-                        tnode = _rbtree_grandparent_of(tnode);
+                        _rbtree_set_color<Container>(_rbtree_parent_of<Container>(tnode), BLACK);
+                        _rbtree_set_color<Container>(_rbtree_grandparent_of<Container>(tnode), RED);
+                        _rbtree_set_color<Container>(uncle, BLACK);
+                        tnode = _rbtree_grandparent_of<Container>(tnode);
                     } else {
                         /* Uncle BLACK means rotations.  */
-                        if (tnode == _rbtree_right_of(_rbtree_parent_of(tnode))) {
-                            tnode = _rbtree_parent_of(tnode);
-                            _rbtree_rotate_left(&root, tnode);
+                        if (tnode == _rbtree_right_of<Container>(_rbtree_parent_of<Container>(tnode))) {
+                            tnode = _rbtree_parent_of<Container>(tnode);
+                            _rbtree_rotate_left<Container>(root, tnode);
                         }
-                        _rbtree_set_color(_rbtree_parent_of(tnode), BLACK);
-                        _rbtree_set_color(_rbtree_grandparent_of(tnode), RED);
-                        _rbtree_rotate_right(&root, _rbtree_grandparent_of(tnode));
+                        _rbtree_set_color<Container>(_rbtree_parent_of<Container>(tnode), BLACK);
+                        _rbtree_set_color<Container>(_rbtree_grandparent_of<Container>(tnode), RED);
+                        _rbtree_rotate_right<Container>(root, _rbtree_grandparent_of<Container>(tnode));
                     }
                 }
                 else {
-                    uncle = _rbtree_left_of(_rbtree_grandparent_of(tnode));
+                    uncle = _rbtree_left_of<Container>(_rbtree_grandparent_of<Container>(tnode));
 
-                    if (_rbtree_color_of(uncle) == RED) {
+                    if (_rbtree_get_color<Container>(uncle) == RED) {
                         /* Uncle RED means color-flip.  */
-                        _rbtree_set_color(_rbtree_parent_of(tnode), BLACK);
-                        _rbtree_set_color(_rbtree_grandparent_of(tnode), RED);
-                        _rbtree_set_color(uncle, BLACK);
-                        tnode = _rbtree_grandparent_of(tnode);
+                        _rbtree_set_color<Container>(_rbtree_parent_of<Container>(tnode), BLACK);
+                        _rbtree_set_color<Container>(_rbtree_grandparent_of<Container>(tnode), RED);
+                        _rbtree_set_color<Container>(uncle, BLACK);
+                        tnode = _rbtree_grandparent_of<Container>(tnode);
                     } else {
                         /* Uncle BLACK means rotations.  */
-                        if (tnode == _rbtree_left_of(_rbtree_parent_of(tnode))) {
-                            tnode = _rbtree_parent_of(tnode);
-                            _rbtree_rotate_right(&root, tnode);
+                        if (tnode == _rbtree_left_of<Container>(_rbtree_parent_of<Container>(tnode))) {
+                            tnode = _rbtree_parent_of<Container>(tnode);
+                            _rbtree_rotate_right<Container>(root, tnode);
                         }
 
-                        _rbtree_set_color(_rbtree_parent_of(tnode), BLACK);
-                        _rbtree_set_color(_rbtree_grandparent_of(tnode), RED);
-                        _rbtree_rotate_left(&root, _rbtree_grandparent_of(tnode));
+                        _rbtree_set_color<Container>(_rbtree_parent_of<Container>(tnode), BLACK);
+                        _rbtree_set_color<Container>(_rbtree_grandparent_of<Container>(tnode), RED);
+                        _rbtree_rotate_left<Container>(root, _rbtree_grandparent_of<Container>(tnode));
                     }
                 }
             }
@@ -299,8 +299,8 @@ namespace rbtree_internal {
         while (1) {
 
             if (cnt->_less(key, cnt->_get_key(current))) {
-                if (current->_left != nullptr) {
-                    current = current->_left;
+                if (current->left != nullptr) {
+                    current = current->left;
                 } else {
                     added_new = true;
                     new_node = cnt->_construct_new_element(std::forward<V>(val));
@@ -310,14 +310,14 @@ namespace rbtree_internal {
                     return new_node;
                 }
             }
-            else if (cnt->_less(cnt->_get_key(current)), key) {
-                if (current->_right != nullptr) {
-                    current = current->_right;
+            else if (cnt->_less(cnt->_get_key(current), key)) {
+                if (current->right != nullptr) {
+                    current = current->right;
                 } else {
                     added_new = true;
                     new_node = cnt->_construct_new_element(std::forward<V>(val));
-                    current->_right = new_node;
-                    new_node->_parent = current;
+                    current->right = new_node;
+                    new_node->parent = current;
 
                     return new_node;
                 }
@@ -337,11 +337,11 @@ namespace rbtree_internal {
 
         assert(sizeof...(Args) <= 1);
 
-        current = _rbtree_bst_insert<Container, K, V>(added_new, std::forward<V>(val));
+        current = _rbtree_bst_insert<Container, K, V>(cnt, added_new, key, std::forward<V>(val));
 
         if (!added_new) return cnt->_handle_elem_found(current, std::forward<Args>(args)...);
 
-        _rbtree_restore_balance<Container>(cnt->_root, cnt->_sentinel, current, INSERTION);
+        _rbtree_restore_balance<Container>(&(cnt->_root), cnt->_sentinel, current, INSERTION);
 
         cnt->_root->color = BLACK;
         cnt->_sentinel->left = cnt->_root;
@@ -385,7 +385,7 @@ namespace rbtree_internal {
 
             if (_rbtree_get_color<Container>(current) == BLACK) {
                 /* Balance only if its a black node.  */
-                _rbtree_restore_balance<Container>(cnt->_root, cnt->_sentinel, r_node, DELETION);
+                _rbtree_restore_balance<Container>(&(cnt->_root), cnt->_sentinel, r_node, DELETION);
             }
         }
         else if (current->parent == nullptr) {
@@ -395,7 +395,7 @@ namespace rbtree_internal {
             /* Its a leaf.  */
             if (_rbtree_get_color<Container>(current) == BLACK) {
                 /* Balance only if its a black node.  */
-                _rbtree_restore_balance<Container>(cnt->_root, cnt->_sentinel, current, DELETION);
+                _rbtree_restore_balance<Container>(&(cnt->_root), cnt->_sentinel, current, DELETION);
             }
 
             parent_node = current->parent;
@@ -415,7 +415,7 @@ namespace rbtree_internal {
 
     template<class Container>
     container::iterator _rbtree_find(Container *cnt, const container::key_type &key) {
-        rb_node<container::node_type> *current;
+        container::internal_ptr current;
         
         current = cnt->_root;        
         while (current) {
@@ -434,7 +434,7 @@ namespace rbtree_internal {
     }
 
     template<class Container>
-    rb_node<container::node_type> *_rbtree_find_bound(Container *cnt, rb_node<container::node_type> *tnode, const container::key_type &key) const {
+    rb_node<container::node_type> *_rbtree_find_bound(Container *cnt, rb_node<container::node_type> *tnode, const container::key_type &key) {
         rb_node<container::node_type> *rnode;
 
         if (tnode == nullptr) return nullptr;
