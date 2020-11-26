@@ -1,12 +1,5 @@
 #pragma once
 
-#include <functional>
-#include <utility>
-#include <cstddef>
-#include <iterator>
-#include <cstdint>
-#include <iostream>
-
 #include "rbtree_internal.h"
 
 #define map_t typename map<K, V, Less>
@@ -35,7 +28,7 @@ namespace adt {
         class const_reverse_iterator;
 
     private:
-        using node_type = value_type;
+        using node_type = std::pair<K, V>;
         using internal_ptr = rb_node<node_type>*;
 
         internal_ptr _root;
@@ -49,7 +42,7 @@ namespace adt {
             internal_ptr ptr;
 
             handle_return_overload() : ptr(nullptr) {}
-            explicit handle_return_overload(value_type *_ptr) : ptr(_ptr) {}
+            explicit handle_return_overload(internal_ptr _ptr) : ptr(_ptr) {}
         };
 
         struct tag_ignore{};
@@ -72,7 +65,9 @@ namespace adt {
             using iterator_category = std::bidirectional_iterator_tag;
             using value_type = map::value_type;
             using reference = map::reference;
+            using const_reference = map::const_reference;
             using pointer = map::pointer;
+            using const_pointer = map::const_pointer;
             using difference_type = map::difference_type;
 
             iterator(const iterator &other) = default;
@@ -93,21 +88,21 @@ namespace adt {
             iterator &operator++() {
                 internal_ptr current;
 
-                if (_ptr == nullptr) {
+                if (_ptr == _sentinel || _ptr == nullptr) {
                     return *this;
                 }
 
-                if (_ptr->_right) {
-                    current = _ptr->_right;
-                    while (current->_left != nullptr) {
-                        current = current->_left;
+                if (_ptr->right) {
+                    current = _ptr->right;
+                    while (current->left != nullptr) {
+                        current = current->left;
                     }
                 }
                 else {
-                    current = _ptr->_parent;
-                    while (current != nullptr && _ptr == current->_right) {
+                    current = _ptr->parent;
+                    while (current != nullptr && _ptr == current->right) {
                         _ptr = current;
-                        current = current->_parent;
+                        current = current->parent;
                     }
                 }
 
@@ -127,17 +122,17 @@ namespace adt {
                     return *this;
                 }
 
-                if (_ptr->_left) {
-                    current = _ptr->_left;
-                    while (current->_right != nullptr) {
-                        current = current->_right;
+                if (_ptr->left) {
+                    current = _ptr->left;
+                    while (current->right != nullptr) {
+                        current = current->right;
                     }
                 }
                 else {
-                    current = _ptr->_parent;
-                    while (current->_parent != nullptr && _ptr == current->_left) {
+                    current = _ptr->parent;
+                    while (current->parent != nullptr && _ptr == current->left) {
                         _ptr = current;
-                        current = current->_parent;
+                        current = current->parent;
                     }
                 }
 
@@ -150,18 +145,21 @@ namespace adt {
                 return temp;
             }
 
-            reference operator*() { return _ptr->_val; }
-            const_reference operator*() const { return _ptr->val; }
-            pointer operator->() { return &(_ptr->_val); }
-            const_pointer operator->() const { return &(_ptr->val); }
+            reference operator*() { return reinterpret_cast<reference>(_ptr->data); }
+            const_reference operator*() const { return reinterpret_cast<const_reference>(_ptr->data); }
+            pointer operator->() { return reinterpret_cast<pointer>(&(_ptr->data)); }
+            const_pointer operator->() const { return reinterpret_cast<const_pointer>(&(_ptr->data)); }
 
             void swap(iterator &lhs, iterator& rhs) { std::swap(lhs, rhs); }
 
+            template<class Container>
+            friend container::iterator rbtree_internal::_rbtree_find(Container *cnt, const container::key_type &key);
+
         private:
+            internal_ptr _sentinel;
             internal_ptr _ptr;
 
-            iterator(internal_ptr *ptr = nullptr) : _ptr(ptr) {}
-
+            iterator(internal_ptr sentinel, internal_ptr ptr) : _sentinel(sentinel), _ptr(ptr) {}
         };
 
         class const_iterator {
@@ -186,9 +184,9 @@ namespace adt {
             }
 
             bool operator==(const const_iterator &other) const { return this->_it == other._it; }
-            bool operator==(internal_ptr *ptr) const { return _it == ptr; }
+            bool operator==(internal_ptr ptr) const { return _it == ptr; }
             bool operator!=(const const_iterator &other) const { return !(*this == other); }
-            bool operator!=(internal_ptr *ptr) const { return !(*this == ptr); }
+            bool operator!=(internal_ptr ptr) const { return !(*this == ptr); }
 
             reference operator*() const { return *_it; }
             pointer operator->() const { return _it.operator->(); }
@@ -209,14 +207,13 @@ namespace adt {
         private:
             iterator _it;
 
-            const_iterator(internal_ptr *ptr) : _it(ptr) {}
+            const_iterator(internal_ptr sentinel, internal_ptr ptr) : _it(sentinel, ptr) {}
         };
 
         class reverse_iterator {
             friend class map;
-            friend class iterator;
-
             using internal_ptr = map::internal_ptr;
+
         public:
             using iterator_category = std::bidirectional_iterator_tag;
             using value_type = map::value_type;
@@ -244,17 +241,25 @@ namespace adt {
                 --_it;
                 return *this;
             }
-            reverse_iterator operator++(int) { return _it--; }
+            reverse_iterator operator++(int) {
+                auto temp(*this);
+                --_it;
+                return temp;
+            }
             reverse_iterator &operator--() {
                 ++_it;
                 return *this;
             }
-            reverse_iterator operator--(int) { return _it++; }
+            reverse_iterator operator--(int) {
+                auto temp(*this);
+                ++_it;
+                return temp;
+            }
 
             reference operator*() { return *_it; }
             const_reference operator*() const { return *_it; }
             pointer operator->() { return _it.operator->(); }
-            const_pointer operator->() const { return _it.operator->() };
+            const_pointer operator->() const { return _it.operator->(); };
 
             void swap(reverse_iterator &lhs, reverse_iterator& rhs) {
                 std::swap(lhs, rhs);
@@ -263,7 +268,7 @@ namespace adt {
         private:
             iterator _it;
 
-            reverse_iterator(internal_ptr ptr) : _it(ptr) {}
+            reverse_iterator(internal_ptr sentinel, internal_ptr ptr) : _it(sentinel, ptr) {}
         };
 
         class const_reverse_iterator {
@@ -277,6 +282,9 @@ namespace adt {
             using reference = map::const_reference;
             using pointer = map::const_pointer;
             using difference_type = map::difference_type;
+
+            /* Implicit conversion from reverse_iterator.  */
+            const_reverse_iterator(reverse_iterator it) : _it(std::move(it)) {}
 
             const_reverse_iterator(const const_reverse_iterator &other) = default;
             const_reverse_iterator(const_reverse_iterator &&other) = default;
@@ -293,15 +301,15 @@ namespace adt {
             bool operator!=(internal_ptr ptr) const { return !(*this == ptr); }
 
             const_reverse_iterator &operator++() {
-                --_it;
-                return *this;
-            }
-            const_reverse_iterator operator++(int) { return _it--; }
-            const_reverse_iterator &operator--() {
                 ++_it;
                 return *this;
             }
-            const_reverse_iterator operator--(int) { return _it++; }
+            const_reverse_iterator operator++(int) { return _it++; }
+            const_reverse_iterator &operator--() {
+                --_it;
+                return *this;
+            }
+            const_reverse_iterator operator--(int) { return _it--; }
 
             reference operator*() const { return *_it; }
             pointer operator->() const { return _it.operator->(); }
@@ -311,9 +319,9 @@ namespace adt {
             }
 
         private:
-            iterator _it;
+            reverse_iterator _it;
 
-            const_reverse_iterator(internal_ptr ptr) : _it(ptr) {}
+            const_reverse_iterator(internal_ptr sentinel, internal_ptr ptr) : _it(sentinel, ptr) {}
         };
 
         /* Constructors/Destructors.  */
@@ -374,7 +382,7 @@ namespace adt {
         std::pair<iterator, iterator> equal_range(const key_type &key);
         std::pair<const_iterator, const_iterator> equal_range(const key_type &key) const;
 
-        friend void swap (map& lhs, map& rhs) {
+        friend void swap(map& lhs, map& rhs) {
             using std::swap;
 
             swap(lhs._root, rhs._root);
@@ -382,6 +390,54 @@ namespace adt {
             swap(lhs._less, rhs._less);
             swap(lhs._size, rhs._size);
         }
+
+        template<class Container>
+        friend void rbtree_internal::_rbtree_destruct(Container *cnt, rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_left_of(rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_right_of(rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_parent_of(rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_grandparent_of(rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend void rbtree_internal::_rbtree_set_color(rb_node<container::node_type> *tnode, color_t color);
+
+        template<class Container>
+        friend color_t rbtree_internal::_rbtree_get_color(rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend void rbtree_internal::_rbtree_rotate_right(rb_node<container::node_type> **root, rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend void rbtree_internal::_rbtree_rotate_left(rb_node<container::node_type> **root, rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend void rbtree_internal::_rbtree_restore_balance(rb_node<container::node_type> **root, rb_node<container::node_type> *sentinel, rb_node<container::node_type> *tnode, balance_t btype);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_successor(rb_node<container::node_type> *tnode);
+
+        template<typename Container, typename Key, typename Value>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_bst_insert(Container *cnt, bool &added_new, const Key &key, Value val);
+
+        template<class Container, typename R, typename Key, typename Value, typename... Args>
+        friend R rbtree_internal::_rbtree_insert(Container *cnt, const Key &key, Value val, Args &&... args);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_prepare_erase(Container *cnt, rb_node<container::node_type> *current, rb_node<container::node_type> *successor);
+
+        template<class Container>
+        friend container::iterator rbtree_internal::_rbtree_find(Container *cnt, const container::key_type &key);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_find_bound(Container *cnt, rb_node<container::node_type> *tnode, const container::key_type &key);
 
     private:
         internal_ptr _copy_tree(internal_ptr other_root);
@@ -394,8 +450,9 @@ namespace adt {
         std::pair<iterator, bool> _handle_elem_found(internal_ptr ptr, to_ignore obj);
         std::pair<iterator, bool> _handle_elem_found(internal_ptr ptr, to_delete obj);
         std::pair<iterator, bool> _handle_elem_not_found(internal_ptr ptr);
-        key_type &_get_key(rb_node<node_type> *tnode);
+        const key_type &_get_key(rb_node<node_type> *tnode);
         bool _is_equal_key(const key_type &lhs_key, const key_type &rhs_key) const;
+        void _clear_node(internal_ptr tnode);
         std::pair<rb_node<node_type> *, size_type> _erase(const_iterator pos);
     };
 
@@ -409,12 +466,14 @@ namespace adt {
 
     template<typename K, typename V, class Less>
     map<K, V, Less>::map(const map &other) noexcept {
-        /* Create an exact copy of this map, O(n).  */
-        _root = _copy_tree(other._root);
-        _sentinel = new rb_node<node_type>();
-        _sentinel->left = _root;
-        _root->parent = _sentinel;
-        _less = other._less;
+        if (this != &other) {
+            /* Create an exact copy of this map, O(n).  */
+            _root = _copy_tree(other._root);
+            _sentinel = new rb_node<node_type>();
+            _sentinel->left = _root;
+            _root->parent = _sentinel;
+            _less = other._less;
+        }
     }
 
     template<typename K, typename V, class Less>
@@ -448,9 +507,11 @@ namespace adt {
             while (current->left != nullptr) {
                 current = current->left;
             }
+        } else {
+            current = _sentinel;
         }
 
-        return iterator(current);
+        return iterator(_sentinel, current);
     }
 
     template<typename K, typename V, class Less>
@@ -460,7 +521,7 @@ namespace adt {
 
     template<typename K, typename V, class Less>
     map_t::iterator map<K, V, Less>::end() noexcept {
-        return iterator(_sentinel);
+        return iterator(_sentinel, _sentinel);
     }
 
     template<typename K, typename V, class Less>
@@ -476,9 +537,11 @@ namespace adt {
             while (current->right != nullptr) {
                 current = current->right;
             }
+        } else {
+            current = _sentinel;
         }
 
-        return reverse_iterator(current);
+        return reverse_iterator(_sentinel, current);
     }
 
     template<typename K, typename V, class Less>
@@ -488,7 +551,7 @@ namespace adt {
 
     template<typename K, typename V, class Less>
     map_t::reverse_iterator map<K, V, Less>::rend() noexcept {
-        return reverse_iterator(_sentinel);
+        return reverse_iterator(_sentinel, _sentinel);
     }
 
     template<typename K, typename V, class Less>
@@ -576,12 +639,13 @@ namespace adt {
     template<class... Args>
     std::pair<map_t::iterator, bool> map<K, V, Less>::emplace(Args &&... args) {
         internal_ptr val = new rb_node<node_type>(std::forward<Args>(args)...);
-        return _rbtree_insert<map<K, V, Less>, std::pair<iterator, bool>, key_type, internal_ptr>(this, val->data, val, to_delete(val));
+
+        return _rbtree_insert<map<K, V, Less>, std::pair<iterator, bool>, key_type, internal_ptr>(this, val->data.first, val, to_delete(val));
     }
 
     template<typename K, typename V, class Less>
     map_t::iterator map<K, V, Less>::erase(const_iterator pos) {
-        return erase(pos).first;
+        return {_sentinel, _erase(pos).first};
     }
 
     template<typename K, typename V, class Less>
@@ -591,16 +655,19 @@ namespace adt {
 
     template<typename K, typename V, class Less>
     map_t::iterator map<K, V, Less>::erase(const_iterator first, const_iterator last) {
-        auto it = first;
+        auto it = first._it;
 
-        while (it != last) it = erase(it);
+        while (it != last._it) it = erase(it);
 
         return it;
     }
 
     template<typename K, typename V, class Less>
     void map<K, V, Less>::clear() noexcept {
-        _rbtree_destruct<map<K, V, Less>>(_root);
+        _rbtree_destruct<map<K, V, Less>>(this, _root);
+        _sentinel->left = nullptr;
+        _root = nullptr;
+        _size = 0;
     }
 
     template<typename K, typename V, class Less>
@@ -620,14 +687,14 @@ namespace adt {
 
     template<typename K, typename V, class Less>
     map_t::size_type map<K, V, Less>::count(const key_type &key) const {
-        return find(key)._ptr != _sentinel ? 1 : 0;
+        return find(key)._it._ptr != _sentinel ? 1 : 0;
     }
 
     template<typename K, typename V, class Less>
     map_t::iterator map<K, V, Less>::lower_bound(const key_type &key) {
         internal_ptr bound = _rbtree_find_bound<map<K, V, Less>>(this, _root, key);
 
-        return bound == nullptr ? end() : iterator(bound);
+        return bound == nullptr ? end() : iterator(_sentinel, bound);
     }
 
     template<typename K, typename V, class Less>
@@ -642,10 +709,10 @@ namespace adt {
         if (bound == nullptr) {
             return end();
         } else {
-            if (_is_equal_key(bound->data, key)) {
-                return iterator(_rbtree_successor<map<K, V, Less>>(bound));
+            if (_is_equal_key(bound->data.first, key)) {
+                return iterator(_sentinel, _rbtree_successor<map<K, V, Less>>(bound));
             } else {
-                return iterator(bound);
+                return iterator(_sentinel, bound);
             }
         }
     }
@@ -714,64 +781,58 @@ namespace adt {
 
     template<typename K, typename V, class Less>
     std::pair<map_t::iterator, bool> map<K, V, Less>::_handle_elem_found(internal_ptr ptr, to_ignore obj) {
-        return {ptr, false};
+        return {{_sentinel, ptr}, false};
     }
 
     template<typename K, typename V, class Less>
     std::pair<map_t::iterator, bool> map<K, V, Less>::_handle_elem_found(internal_ptr ptr, to_delete obj) {
         delete obj.ptr;
-        return {ptr, false};
+        return {{_sentinel, ptr}, false};
     }
 
     template<typename K, typename V, class Less>
     std::pair<map_t::iterator, bool> map<K, V, Less>::_handle_elem_not_found(internal_ptr ptr) {
-        return {ptr, true};
+        return {{_sentinel, ptr}, true};
     }
 
     template<typename K, typename V, class Less>
-    map_t::key_type &map<K, V, Less>::_get_key(rb_node<node_type> *tnode) {
+    const map_t::key_type &map<K, V, Less>::_get_key(internal_ptr tnode) {
         return tnode->data.first;
     }
 
     template<typename K, typename V, class Less>
     bool map<K, V, Less>::_is_equal_key(const key_type &lhs_key, const key_type &rhs_key) const {
-        return _less(lhs_key, rhs_key) || _less(rhs_key, lhs_key);
+        return !_less(lhs_key, rhs_key) && !_less(rhs_key, lhs_key);
     }
 
     template<typename K, typename V, class Less>
-    std::pair<rb_node<map_t::node_type> *, map_t::size_type> map<K, V, Less>::_erase(map::const_iterator pos) {
-        internal_ptr save, successor, next_elem_ptr;
-        rb_node<node_type> *erase_ptr;
-        size_t count = 0;
+    void map<K, V, Less>::_clear_node(internal_ptr tnode) {
+        delete tnode;
+    }
 
-        if (pos != end()) {
-            save = _sentinel;
+    template<typename K, typename V, class Less>
+    std::pair<rb_node<map_t::node_type> *, map_t::size_type> map<K, V, Less>::_erase(const_iterator pos) {
+        internal_ptr to_return, successor, erase_ptr;
+        iterator &it = pos._it;
+
+        to_return = _sentinel;
+        if (it._ptr != _sentinel) {
             _root->parent = nullptr;
 
-            successor = _rbtree_successor<map<K, V, Less>>(pos._ptr);
-            erase_ptr = _rbtree_erase<map<K, V, Less>>(this, pos._ptr, successor);
+            successor = _rbtree_successor<map<K, V, Less>>(it._ptr);
+            erase_ptr = _rbtree_prepare_erase<map<K, V, Less>>(this, it._ptr, successor);
+            to_return = erase_ptr == successor ? it._ptr : successor;
 
-            if (erase_ptr != _root) {
-                next_elem_ptr = erase_ptr == successor ? pos._ptr : successor;
+            delete erase_ptr;
 
-                delete erase_ptr;
-
-                /* Update the sentinel node.  */
-                _sentinel = save;
-                _root->parent = _sentinel;
-                _sentinel->left = _root;
-                --_size;
-                count++;
-
-                return {successor != nullptr ? next_elem_ptr : end(), count};
-            } else {
-                delete _root;
-                _sentinel->left = nullptr;
+            --_size;
+            if (_size == 0) {
                 _root = nullptr;
-                _size = 0;
+                _sentinel->left = nullptr;
+                to_return = _sentinel;
             }
         }
 
-        return {end(), count};
+        return {to_return, 1};
     }
 }

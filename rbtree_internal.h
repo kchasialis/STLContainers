@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cassert>
+
 namespace rbtree_internal {
 
     using color_t = int8_t;
@@ -37,12 +39,12 @@ namespace rbtree_internal {
     };
 
     template<class Container>
-    void _rbtree_destruct(rb_node<container::node_type> *tnode) {
+    void _rbtree_destruct(Container *cnt, rb_node<container::node_type> *tnode) {
         if (tnode) {
-            _rbtree_destruct<Container>(tnode->left);
-            _rbtree_destruct<Container>(tnode->right);
+            _rbtree_destruct(cnt, tnode->left);
+            _rbtree_destruct(cnt, tnode->right);
 
-            delete tnode;
+            cnt->_clear_node(tnode);
         }
     }
 
@@ -352,7 +354,7 @@ namespace rbtree_internal {
     }
 
     template<class Container>
-    rb_node<container::node_type> * _rbtree_erase(Container *cnt, rb_node<container::node_type> *current, rb_node<container::node_type> *successor) {
+    rb_node<container::node_type> * _rbtree_prepare_erase(Container *cnt, rb_node<container::node_type> *current, rb_node<container::node_type> *successor) {
         rb_node<container::node_type> *r_node, *parent_node;
 
         /* If this node is not a leaf and has both children.  */
@@ -426,7 +428,7 @@ namespace rbtree_internal {
                 current = current->right;
             }
             else {
-                return container::iterator(current);
+                return container::iterator(cnt->_sentinel, current);
             }
         }
 
@@ -435,15 +437,13 @@ namespace rbtree_internal {
 
     template<class Container>
     rb_node<container::node_type> *_rbtree_find_bound(Container *cnt, rb_node<container::node_type> *tnode, const container::key_type &key) {
-        rb_node<container::node_type> *rnode;
-
         if (tnode == nullptr) return nullptr;
 
         if (cnt->_is_equal_key(cnt->_get_key(tnode), key)) return tnode;
 
-        if (cnt->_less(cnt->_get_key(tnode), key)) return _rbtree_find_bound<Container>(cnt, tnode->right, key);
+        if (cnt->_less(cnt->_get_key(tnode), key)) return _rbtree_find_bound(cnt, tnode->right, key);
 
-        rnode = _rbtree_find_bound<Container>(cnt, tnode->left, key);
+        auto rnode = _rbtree_find_bound(cnt, tnode->left, key);
         return rnode == nullptr ? tnode : rnode;
     }
 }

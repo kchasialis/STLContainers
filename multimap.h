@@ -1,8 +1,10 @@
 #pragma once
 
+#include "rbtree_internal.h"
+
 #define multimap_t typename multimap<K, V, Less>
 
-#include "rbtree_internal.h"
+using namespace rbtree_internal;
 
 namespace adt {
 
@@ -53,6 +55,9 @@ namespace adt {
     public:
         class iterator {
             friend class multimap;
+            friend class const_iterator;
+            friend class reverse_iterator;
+            friend class const_reverse_iterator;
             using internal_ptr = multimap::internal_ptr;
 
         public:
@@ -70,6 +75,7 @@ namespace adt {
             iterator &operator=(const iterator &rhs) = default;
             iterator &operator=(internal_ptr ptr) {
                 this->_ptr = ptr;
+                this->inner_ptr = ptr ? ptr->data : nullptr;
                 return *this;
             }
 
@@ -82,7 +88,7 @@ namespace adt {
             iterator &operator++() {
                 internal_ptr current;
 
-                if (_ptr == nullptr) {
+                if (_ptr == _sentinel || _ptr == nullptr) {
                     return *this;
                 }
 
@@ -92,17 +98,17 @@ namespace adt {
                     return *this;
                 }
 
-                if (_ptr->_right) {
-                    current = _ptr->_right;
-                    while (current->_left != nullptr) {
-                        current = current->_left;
+                if (_ptr->right) {
+                    current = _ptr->right;
+                    while (current->left != nullptr) {
+                        current = current->left;
                     }
                 }
                 else {
-                    current = _ptr->_parent;
-                    while (current != nullptr && _ptr == current->_right) {
+                    current = _ptr->parent;
+                    while (current != nullptr && _ptr == current->right) {
                         _ptr = current;
-                        current = current->_parent;
+                        current = current->parent;
                     }
                 }
 
@@ -128,17 +134,17 @@ namespace adt {
                     return *this;
                 }
 
-                if (_ptr->_left) {
-                    current = _ptr->_left;
-                    while (current->_right != nullptr) {
-                        current = current->_right;
+                if (_ptr->left) {
+                    current = _ptr->left;
+                    while (current->right != nullptr) {
+                        current = current->right;
                     }
                 }
                 else {
-                    current = _ptr->_parent;
-                    while (current->_parent != nullptr && _ptr == current->_left) {
+                    current = _ptr->parent;
+                    while (current->parent != nullptr && _ptr == current->left) {
                         _ptr = current;
-                        current = current->_parent;
+                        current = current->parent;
                     }
                 }
 
@@ -161,18 +167,21 @@ namespace adt {
                 std::swap(lhs, rhs);
             }
 
+            template<class Container>
+            friend container::iterator rbtree_internal::_rbtree_find(Container *cnt, const container::key_type &key);
+
         private:
+            internal_ptr _sentinel;
             internal_ptr _ptr;
             node_type _inner_ptr;
 
-            iterator(internal_ptr *ptr = nullptr) : _ptr(ptr) {
+            iterator(internal_ptr sentinel, internal_ptr ptr) : _sentinel(sentinel), _ptr(ptr) {
                 _inner_ptr = _ptr ? _ptr->data : nullptr;
             }
         };
 
         class const_iterator {
             friend class multimap;
-            friend class iterator;
             using internal_ptr = multimap::internal_ptr;
 
         public:
@@ -186,15 +195,15 @@ namespace adt {
             const_iterator(iterator it) : _it(std::move(it)) {}
 
             const_iterator &operator=(const const_iterator &rhs) = default;
-            const_iterator &operator=(internal_ptr *ptr) {
+            const_iterator &operator=(internal_ptr ptr) {
                 this->_it = ptr;
                 return *this;
             }
 
             bool operator==(const const_iterator &other) const { return this->_it == other._it; }
-            bool operator==(internal_ptr *ptr) const { return _it == ptr; }
+            bool operator==(internal_ptr ptr) const { return _it == ptr; }
             bool operator!=(const const_iterator &other) const { return !(*this == other); }
-            bool operator!=(internal_ptr *ptr) const { return !(*this == ptr); }
+            bool operator!=(internal_ptr ptr) const { return !(*this == ptr); }
 
             reference operator*() const { return *_it; }
             pointer operator->() const { return _it.operator->(); }
@@ -215,12 +224,11 @@ namespace adt {
         private:
             iterator _it;
 
-            const_iterator(internal_ptr *ptr) : _it(ptr) {}
+            const_iterator(internal_ptr sentinel, internal_ptr ptr) : _it(sentinel, ptr) {}
         };
 
         class reverse_iterator {
             friend class multimap;
-            friend class iterator;
             using internal_ptr = multimap::internal_ptr;
 
         public:
@@ -250,12 +258,20 @@ namespace adt {
                 --_it;
                 return *this;
             }
-            reverse_iterator operator++(int) { return _it--; }
+            reverse_iterator operator++(int) {
+                auto temp(*this);
+                --_it;
+                return temp;
+            }
             reverse_iterator &operator--() {
                 ++_it;
                 return *this;
             }
-            reverse_iterator operator--(int) { return _it++; }
+            reverse_iterator operator--(int) {
+                auto temp(*this);
+                ++_it;
+                return temp;
+            }
 
             reference operator*() { return *_it; }
             const_reference operator*() const { return *_it; }
@@ -269,20 +285,22 @@ namespace adt {
         private:
             iterator _it;
 
-            reverse_iterator(internal_ptr ptr) : _it(ptr) {}
+            reverse_iterator(internal_ptr sentinel, internal_ptr ptr) : _it(sentinel, ptr) {}
         };
 
         class const_reverse_iterator {
             friend class multimap;
-            friend class iterator;
-
             using internal_ptr = multimap::internal_ptr;
+
         public:
             using iterator_category = std::bidirectional_iterator_tag;
             using value_type = multimap::value_type;
             using reference = multimap::const_reference;
             using pointer = multimap::const_pointer;
             using difference_type = multimap::difference_type;
+
+            /* Implicit conversion from reverse_iterator.  */
+            const_reverse_iterator(reverse_iterator it) : _it(std::move(it)) {}
 
             const_reverse_iterator(const const_reverse_iterator &other) = default;
             const_reverse_iterator(const_reverse_iterator &&other) = default;
@@ -299,15 +317,15 @@ namespace adt {
             bool operator!=(internal_ptr ptr) const { return !(*this == ptr); }
 
             const_reverse_iterator &operator++() {
-                --_it;
-                return *this;
-            }
-            const_reverse_iterator operator++(int) { return _it--; }
-            const_reverse_iterator &operator--() {
                 ++_it;
                 return *this;
             }
-            const_reverse_iterator operator--(int) { return _it++; }
+            const_reverse_iterator operator++(int) { return _it++; }
+            const_reverse_iterator &operator--() {
+                --_it;
+                return *this;
+            }
+            const_reverse_iterator operator--(int) { return _it--; }
 
             reference operator*() const { return *_it; }
             pointer operator->() const { return _it.operator->(); }
@@ -317,9 +335,9 @@ namespace adt {
             }
 
         private:
-            iterator _it;
+            reverse_iterator _it;
 
-            const_reverse_iterator(internal_ptr ptr) : _it(ptr) {}
+            const_reverse_iterator(internal_ptr sentinel, internal_ptr ptr) : _it(sentinel, ptr) {}
         };
 
         /* Constructors/Destructors.  */
@@ -383,6 +401,54 @@ namespace adt {
             swap(lhs._size, rhs._size);
         }
 
+        template<class Container>
+        friend void rbtree_internal::_rbtree_destruct(Container *cnt, rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_left_of(rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_right_of(rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_parent_of(rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_grandparent_of(rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend void rbtree_internal::_rbtree_set_color(rb_node<container::node_type> *tnode, color_t color);
+
+        template<class Container>
+        friend color_t rbtree_internal::_rbtree_get_color(rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend void rbtree_internal::_rbtree_rotate_right(rb_node<container::node_type> **root, rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend void rbtree_internal::_rbtree_rotate_left(rb_node<container::node_type> **root, rb_node<container::node_type> *tnode);
+
+        template<class Container>
+        friend void rbtree_internal::_rbtree_restore_balance(rb_node<container::node_type> **root, rb_node<container::node_type> *sentinel, rb_node<container::node_type> *tnode, balance_t btype);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_successor(rb_node<container::node_type> *tnode);
+
+        template<typename Container, typename Key, typename Value>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_bst_insert(Container *cnt, bool &added_new, const Key &key, Value val);
+
+        template<class Container, typename R, typename Key, typename Value, typename... Args>
+        friend R rbtree_internal::_rbtree_insert(Container *cnt, const Key &key, Value val, Args &&... args);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_prepare_erase(Container *cnt, rb_node<container::node_type> *current, rb_node<container::node_type> *successor);
+
+        template<class Container>
+        friend container::iterator rbtree_internal::_rbtree_find(Container *cnt, const container::key_type &key);
+
+        template<class Container>
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_find_bound(Container *cnt, rb_node<container::node_type> *tnode, const container::key_type &key);
+
     private:
         internal_ptr _copy_tree(internal_ptr other_root);
         iterator _add_to_list(internal_ptr ptr, multimap_node *new_node);
@@ -395,10 +461,11 @@ namespace adt {
         iterator _handle_elem_found(internal_ptr ptr, P &&val, typename std::enable_if<std::is_constructible<P&&, value_type>::value, enabler>::type = enabler());
         iterator _handle_elem_found(internal_ptr ptr, multimap_node *val);
         iterator _handle_elem_not_found(internal_ptr ptr);
-        key_type &_get_key(internal_ptr ptr);
+        const key_type &_get_key(internal_ptr tnode);
         bool _is_equal_key(const key_type &lhs_key, const key_type &rhs_key) const;
+        void _clear_node(internal_ptr tnode);
         size_type _erase_list(internal_ptr erase_ptr);
-        size_type _erase_node(internal_ptr erase_ptr);
+        void _erase_from_node(internal_ptr erase_ptr);
         std::pair<internal_ptr, size_type> _erase(const_iterator pos, bool erase_all);
     };
 
@@ -406,7 +473,7 @@ namespace adt {
 
     /* Public member functions.  */
     template<typename K, typename V, class Less>
-    multimap<K, V, Less>::multimap(const key_compare &keq) noexcept {
+    multimap<K, V, Less>::multimap(const key_compare &keq) noexcept : _root(nullptr), _size(0), _less(keq) {
         _sentinel = new rb_node<node_type>();
     }
 
@@ -453,9 +520,11 @@ namespace adt {
             while (current->left != nullptr) {
                 current = current->left;
             }
+        } else {
+            current = _sentinel;
         }
 
-        return iterator(current);
+        return iterator(_sentinel, current);
     }
 
     template<typename K, typename V, class Less>
@@ -465,7 +534,7 @@ namespace adt {
 
     template<typename K, typename V, class Less>
     multimap_t::iterator multimap<K, V, Less>::end() noexcept {
-        return iterator(_sentinel);
+        return iterator(_sentinel, _sentinel);
     }
 
     template<typename K, typename V, class Less>
@@ -481,9 +550,11 @@ namespace adt {
             while (current->right != nullptr) {
                 current = current->right;
             }
+        } else {
+            current = _sentinel;
         }
 
-        return reverse_iterator(current);
+        return reverse_iterator(_sentinel, current);
     }
 
     template<typename K, typename V, class Less>
@@ -493,7 +564,7 @@ namespace adt {
 
     template<typename K, typename V, class Less>
     multimap_t::reverse_iterator multimap<K, V, Less>::rend() noexcept {
-        return reverse_iterator(_sentinel);
+        return reverse_iterator(_sentinel, _sentinel);
     }
 
     template<typename K, typename V, class Less>
@@ -556,12 +627,13 @@ namespace adt {
     template<class... Args>
     multimap_t::iterator multimap<K, V, Less>::emplace(Args &&... args) {
         multimap_node *val = new multimap_node(std::forward<Args>(args)...);
+
         return _rbtree_insert<multimap<K, V, Less>, iterator, key_type, multimap_node*>(this, val->data.first, val, val);
     }
 
     template<typename K, typename V, class Less>
     multimap_t::iterator multimap<K, V, Less>::erase(const_iterator pos) {
-        return _erase(pos, false).first;
+        return {_sentinel, _erase(pos, false).first};
     }
 
     template<typename K, typename V, class Less>
@@ -571,16 +643,19 @@ namespace adt {
 
     template<typename K, typename V, class Less>
     multimap_t::iterator multimap<K, V, Less>::erase(const_iterator first, const_iterator last) {
-        auto it = first;
+        auto it = first._it;
 
-        while (it != last) it = erase(it);
+        while (it != last._it) it = erase(it);
 
         return it;
     }
 
     template<typename K, typename V, class Less>
     void multimap<K, V, Less>::clear() noexcept {
-        _rbtree_destruct<multimap<K, V, Less>>(_root);
+        _rbtree_destruct<multimap<K, V, Less>>(this, _root);
+        _sentinel->left = nullptr;
+        _root = nullptr;
+        _size = 0;
     }
 
     template<typename K, typename V, class Less>
@@ -600,8 +675,8 @@ namespace adt {
 
     template<typename K, typename V, class Less>
     multimap_t::size_type multimap<K, V, Less>::count(const key_type &key) const {
+        internal_ptr found_ptr = const_cast<multimap<K, V, Less>*>(this)->find(key)._ptr;
         multimap_node *current;
-        multimap_node *found_ptr = const_cast<multimap<K, V, Less>*>(this)->find(key)._ptr;
         size_t count = 0;
 
         if (found_ptr == _sentinel) return count;
@@ -619,7 +694,7 @@ namespace adt {
     multimap_t::iterator multimap<K, V, Less>::lower_bound(const key_type &key) {
         internal_ptr bound = _rbtree_find_bound<multimap<K, V, Less>>(this, _root, key);
 
-        return bound == nullptr ? end() : iterator(bound);
+        return bound == nullptr ? end() : iterator(_sentinel, bound);
     }
 
     template<typename K, typename V, class Less>
@@ -634,10 +709,10 @@ namespace adt {
         if (bound == nullptr) {
             return end();
         } else {
-            if (_is_equal_key(bound->data, key)) {
-                return iterator(_rbtree_successor<multimap<K, V, Less>>(bound));
+            if (_is_equal_key(bound->data->data.first, key)) {
+                return iterator(_sentinel, _rbtree_successor<multimap<K, V, Less>>(bound));
             } else {
-                return iterator(bound);
+                return iterator(_sentinel, bound);
             }
         }
     }
@@ -649,10 +724,11 @@ namespace adt {
 
     template<typename K, typename V, class Less>
     std::pair<multimap_t::iterator, multimap_t::iterator> multimap<K, V, Less>::equal_range(const key_type &key) {
-        auto first = find(key);
-        auto second(first);
+        auto first = find(key)._ptr;
+        auto second = _rbtree_successor<multimap<K, V, Less>>(first);
+        second = second != nullptr ? second : _sentinel;
 
-        return {first, ++second};
+        return {{_sentinel, first}, {_sentinel, second}};
     }
 
     template<typename K, typename V, class Less>
@@ -685,7 +761,7 @@ namespace adt {
         new_node->next->previous = new_node;
         _size++;
 
-        return ptr;
+        return {_sentinel, ptr};
     }
 
     template<typename K, typename V, class Less>
@@ -722,17 +798,22 @@ namespace adt {
 
     template<typename K, typename V, class Less>
     multimap_t::iterator multimap<K, V, Less>::_handle_elem_not_found(internal_ptr ptr) {
-        return ptr;
+        return {_sentinel, ptr};
     }
 
     template<typename K, typename V, class Less>
-    multimap_t::key_type &multimap<K, V, Less>::_get_key(internal_ptr ptr) {
-        return ptr->data->data.first;
+    const multimap_t::key_type &multimap<K, V, Less>::_get_key(internal_ptr tnode) {
+        return tnode->data->data.first;
     }
 
     template<typename K, typename V, class Less>
     bool multimap<K, V, Less>::_is_equal_key(const key_type &lhs_key, const key_type &rhs_key) const {
-        return _less(lhs_key, rhs_key) || _less(rhs_key, lhs_key);
+        return !_less(lhs_key, rhs_key) && !_less(rhs_key, lhs_key);
+    }
+
+    template<typename K, typename V, class Less>
+    void multimap<K, V, Less>::_clear_node(internal_ptr tnode) {
+        _erase_list(tnode);
     }
 
     template<typename K, typename V, class Less>
@@ -757,48 +838,51 @@ namespace adt {
     }
 
     template<typename K, typename V, class Less>
-    multimap_t::size_type multimap<K, V, Less>::_erase_node(internal_ptr erase_ptr) {
+    void multimap<K, V, Less>::_erase_from_node(internal_ptr erase_ptr) {
         multimap_node *head = erase_ptr->data;
 
         erase_ptr->data = head->next;
         delete head;
-
-        return 1;
     }
 
     template<typename K, typename V, class Less>
     std::pair<multimap_t::internal_ptr, multimap_t::size_type> multimap<K, V, Less>::_erase(const_iterator pos, bool erase_all) {
-        internal_ptr save, successor, next_elem_ptr, erase_ptr;
+        internal_ptr to_return, successor, erase_ptr;
         size_t count = 0;
+        iterator &it = pos._it;
 
-        if (pos != end()) {
-            save = _sentinel;
+        to_return = _sentinel;
+        if (it._ptr != _sentinel) {
             _root->parent = nullptr;
 
-            successor = _rbtree_successor<multimap<K, V, Less>>(pos._ptr);
-            erase_ptr = _rbtree_erase<multimap<K, V, Less>>(this, pos._ptr, successor);
+            if (erase_all) {
+                successor = _rbtree_successor<multimap<K, V, Less>>(it._ptr);
+                erase_ptr = _rbtree_prepare_erase<multimap<K, V, Less>>(this, it._ptr, successor);
+                to_return = erase_ptr == successor ? it._ptr : successor;
 
-            if (erase_ptr != _root) {
-                next_elem_ptr = erase_ptr == successor ? pos._ptr : successor;
-
-                count = erase_all ? _erase_list(erase_ptr) : _erase_node(erase_ptr);
-
-                /* Update the sentinel node.  */
-                _sentinel = save;
-                _root->parent = _sentinel;
-                _sentinel->left = _root;
-                _size -= count;
-
-                return {successor != nullptr ? next_elem_ptr : end(), count};
+                count = _erase_list(erase_ptr);
             } else {
-                delete _root->data;
-                delete _root;
-                _sentinel->left = nullptr;
+                _erase_from_node(it._ptr);
+                if (it._ptr->data != nullptr) {
+                    to_return = it._ptr;
+                } else {
+                    successor = _rbtree_successor<multimap<K, V, Less>>(it._ptr);
+                    erase_ptr = _rbtree_prepare_erase<multimap<K, V, Less>>(this, it._ptr, successor);
+                    to_return = erase_ptr == successor ? it._ptr : successor;
+
+                    delete erase_ptr;
+                }
+                count = 1;
+            }
+
+            _size -= count;
+            if (_size == 0) {
                 _root = nullptr;
-                _size = 0;
+                _sentinel->left = nullptr;
+                to_return = _sentinel;
             }
         }
 
-        return {end(), count};
+        return {to_return, count};
     }
 }

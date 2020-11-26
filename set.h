@@ -87,7 +87,8 @@ namespace adt {
             iterator &operator++() {
                 internal_ptr current;
 
-                if (_ptr == nullptr) {
+                /* Dont increment if its at the end.  */
+                if (_ptr == _sentinel || _ptr == nullptr) {
                     return *this;
                 }
 
@@ -155,14 +156,14 @@ namespace adt {
             friend container::iterator rbtree_internal::_rbtree_find(Container *cnt, const container::key_type &key);
 
         private:
+            internal_ptr _sentinel;
             internal_ptr _ptr;
 
-            iterator(internal_ptr ptr = nullptr) : _ptr(ptr) {}
+            iterator(internal_ptr sentinel, internal_ptr ptr = nullptr) : _sentinel(sentinel), _ptr(ptr) {}
         };
 
         class reverse_iterator {
             friend class set;
-            friend class iterator;
 
             using internal_ptr = set::internal_ptr;
         public:
@@ -190,12 +191,20 @@ namespace adt {
                 --_it;
                 return *this;
             }
-            reverse_iterator operator++(int) { return _it--; }
+            reverse_iterator operator++(int) {
+                auto temp(*this);
+                --_it;
+                return temp;
+            }
             reverse_iterator &operator--() {
                 ++_it;
                 return *this;
             }
-            reverse_iterator operator--(int) { return _it++; }
+            reverse_iterator operator--(int) {
+                auto temp(*this);
+                ++_it;
+                return temp;
+            }
 
             reference operator*() const { return *_it; }
             pointer operator->() const { return _it.operator->(); }
@@ -207,7 +216,7 @@ namespace adt {
         private:
             iterator _it;
 
-            reverse_iterator(internal_ptr ptr) : _it(ptr) {}
+            reverse_iterator(internal_ptr sentinel, internal_ptr ptr) : _it(sentinel, ptr) {}
         };
 
         /* Constructors/Destructors.  */
@@ -271,7 +280,7 @@ namespace adt {
         }
 
         template<class Container>
-        friend void rbtree_internal::_rbtree_destruct(rb_node<container::node_type> *tnode);
+        friend void rbtree_internal::_rbtree_destruct(Container *cnt, rb_node<container::node_type> *tnode);
 
         template<class Container>
         friend rb_node<container::node_type> *rbtree_internal::_rbtree_left_of(rb_node<container::node_type> *tnode);
@@ -310,7 +319,7 @@ namespace adt {
         friend R rbtree_internal::_rbtree_insert(Container *cnt, const K &key, V val, Args &&... args);
 
         template<class Container>
-        friend rb_node<container::node_type> *rbtree_internal::_rbtree_erase(Container *cnt, rb_node<container::node_type> *current, rb_node<container::node_type> *successor);
+        friend rb_node<container::node_type> *rbtree_internal::_rbtree_prepare_erase(Container *cnt, rb_node<container::node_type> *current, rb_node<container::node_type> *successor);
 
         template<class Container>
         friend container::iterator rbtree_internal::_rbtree_find(Container *cnt, const container::key_type &key);
@@ -326,8 +335,9 @@ namespace adt {
         std::pair<iterator, bool> _handle_elem_found(internal_ptr ptr, to_ignore obj);
         std::pair<iterator, bool> _handle_elem_found(internal_ptr ptr, to_delete obj);
         std::pair<iterator, bool> _handle_elem_not_found(internal_ptr ptr);
-        key_type &_get_key(rb_node<node_type> *tnode);
+        const key_type &_get_key(internal_ptr tnode);
         bool _is_equal_key(const key_type &lhs_key, const key_type &rhs_key) const;
+        void _clear_node(internal_ptr tnode);
         std::pair<rb_node<node_type> *, size_type> _erase(const_iterator pos);
     };
 
@@ -386,7 +396,7 @@ namespace adt {
             current = _sentinel;
         }
 
-        return iterator(current);
+        return iterator(_sentinel, current);
     }
 
     template<typename Key, class Less>
@@ -396,7 +406,7 @@ namespace adt {
 
     template<typename Key, class Less>
     set_t::iterator set<Key, Less>::end() noexcept {
-        return iterator(_sentinel);
+        return iterator(_sentinel, _sentinel);
     }
 
     template<typename Key, class Less>
@@ -416,7 +426,7 @@ namespace adt {
             current = _sentinel;
         }
 
-        return reverse_iterator(current);
+        return reverse_iterator(_sentinel, current);
     }
 
     template<typename Key, class Less>
@@ -426,7 +436,7 @@ namespace adt {
 
     template<typename Key, class Less>
     set_t::reverse_iterator set<Key, Less>::rend() noexcept {
-        return reverse_iterator(_sentinel);
+        return reverse_iterator(_sentinel, _sentinel);
     }
 
     template<typename Key, class Less>
@@ -494,7 +504,7 @@ namespace adt {
 
     template<typename Key, class Less>
     set_t::iterator set<Key, Less>::erase(const_iterator pos) {
-        return _erase(pos).first;
+        return {_sentinel, _erase(pos).first};
     }
 
     template<typename Key, class Less>
@@ -513,7 +523,8 @@ namespace adt {
 
     template<typename Key, class Less>
     void set<Key, Less>::clear() noexcept {
-        _rbtree_destruct<set<Key, Less>>(_root);
+        _rbtree_destruct<set<Key, Less>>(this, _root);
+        _sentinel->left = nullptr;
         _root = nullptr;
         _size = 0;
     }
@@ -542,7 +553,7 @@ namespace adt {
     set_t::iterator set<Key, Less>::lower_bound(const key_type &key) {
         internal_ptr bound = _rbtree_find_bound<set<Key, Less>>(this, _root, key);
 
-        return bound == nullptr ? end() : iterator(bound);
+        return bound == nullptr ? end() : iterator(_sentinel, bound);
     }
 
     template<typename Key, class Less>
@@ -558,9 +569,9 @@ namespace adt {
             return end();
         } else {
             if (_is_equal_key(bound->data, key)) {
-                return iterator(_rbtree_successor<set<Key, Less>>(bound));
+                return iterator(_sentinel, _rbtree_successor<set<Key, Less>>(bound));
             } else {
-                return iterator(bound);
+                return iterator(_sentinel, bound);
             }
         }
     }
@@ -618,65 +629,58 @@ namespace adt {
 
     template<typename Key, class Less>
     std::pair<set_t::iterator, bool> set<Key, Less>::_handle_elem_found(internal_ptr ptr, to_ignore obj) {
-        return {ptr, false};
+        return {{_sentinel, ptr}, false};
     }
 
     template<typename Key, class Less>
     std::pair<set_t::iterator, bool> set<Key, Less>::_handle_elem_found(internal_ptr ptr, to_delete obj) {
         delete obj.ptr;
-        return {ptr, false};
+        return {{_sentinel, ptr}, false};
     }
 
     template<typename Key, class Less>
     std::pair<set_t::iterator, bool> set<Key, Less>::_handle_elem_not_found(internal_ptr ptr) {
-        return {ptr, true};
+        return {{_sentinel, ptr}, true};
     }
 
     template<typename Key, class Less>
-    set_t::key_type &set<Key, Less>::_get_key(rb_node<node_type> *tnode) {
+    const set_t::key_type &set<Key, Less>::_get_key(rb_node<node_type> *tnode) {
         return tnode->data;
     }
 
     template<typename Key, class Less>
     bool set<Key, Less>::_is_equal_key(const key_type &lhs_key, const key_type &rhs_key) const {
-        return _less(lhs_key, rhs_key) || _less(rhs_key, lhs_key);
+        return !_less(lhs_key, rhs_key) && !_less(rhs_key, lhs_key);
+    }
+
+    template<typename Key, class Less>
+    void set<Key,Less>::_clear_node(internal_ptr tnode) {
+        delete tnode;
     }
 
     template<typename Key, class Less>
     std::pair<rb_node<set_t::node_type> *, set_t::size_type> set<Key, Less>::_erase(const_iterator pos) {
-        internal_ptr save, successor, next_elem_ptr, erase_ptr;
-        size_type count = 0;
+        internal_ptr to_return, successor, erase_ptr;
 
-        if (pos != end()) {
-            save = _sentinel;
+        to_return = _sentinel;
+        if (pos._ptr != _sentinel) {
             _root->parent = nullptr;
 
             successor = _rbtree_successor<set<Key, Less>>(pos._ptr);
-            erase_ptr = _rbtree_erase<set<Key, Less>>(this, pos._ptr, successor);
+            erase_ptr = _rbtree_prepare_erase<set<Key, Less>>(this, pos._ptr, successor);
+            to_return = erase_ptr == successor ? pos._ptr : successor;
 
-            if (erase_ptr != _root) {
-                next_elem_ptr = erase_ptr == successor ? pos._ptr : successor;
+            delete erase_ptr;
 
-                delete erase_ptr;
-
-                /* Update the sentinel node.  */
-                _sentinel = save;
-                _root->parent = _sentinel;
-                _sentinel->left = _root;
-                --_size;
-                count++;
-
-                return {successor != nullptr ? next_elem_ptr : _sentinel, count};
-            }
-            else {
-                delete _root;
-                _sentinel->left = nullptr;
+            --_size;
+            if (_size == 0) {
                 _root = nullptr;
-                _size = 0;
+                _sentinel->left = nullptr;
+                to_return = _sentinel;
             }
         }
 
-        return {_sentinel, count};
+        return {to_return, 1};
     }
 }
 
