@@ -611,8 +611,8 @@ without looking at _slots array that maybe cause inefficiency.
 
 example pseudocode of find(key)
 
-`
-h1_hash = h1(hash);  
+```
+h1_hash = h1(hash);
 pos = h1_hash % capacity;  
 while (1) {
     if (is_empty(_ctrls[pos])) {
@@ -622,18 +622,16 @@ while (1) {
        pos = probe(pos);
        continue;
     }
-    else if (is_full(_ctrls[pos])) {
-        if (_ctrls[pos] == h2_hash) {
-            // Notice how much of the probing happens in the ctrl bytes
-            if (_slots[pos] equals key)  {
-                return <code that handles element that does exist>
-            } else {
-                pos = probe(pos);
-            }
+    else if (_ctrls[pos] == h2_hash) {
+        // Notice how much of the probing happens in the _ctrls (cache efficiency)
+        if (_slots[pos] equals key)  {
+            return <code that handles element that does exist>
+        } else {
+            pos = probe(pos);
         }
     }
 }
-` 
+```
  
 ### adt::unordered_set iterators
 unordered_set's iterators are forward iterators.
