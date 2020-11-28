@@ -948,6 +948,6 @@ See LICENSE.md for more information.
  * koschasialis@gmail.com
  * sdi1600195@di.uoa.gr
  
-#Thoughts:
+# Thoughts
  * Maybe implement some more functionality like more constructors, try_emplace() etc.
  
