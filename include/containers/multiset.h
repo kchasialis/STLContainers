@@ -334,6 +334,9 @@ namespace adt {
         friend container::iterator rbtree_internal::_rbtree_find(Container *cnt, const container::key_type &key);
 
         template<class Container>
+        friend bool rbtree_internal::_rbtree_is_equal_key(Container *cnt, const container::key_type &lhs_key, const container::key_type &rhs_key);
+
+        template<class Container>
         friend rb_node<container::node_type> *rbtree_internal::_rbtree_find_bound(Container *cnt, rb_node<container::node_type> *tnode, const container::key_type &key);
 
     private:
@@ -347,7 +350,6 @@ namespace adt {
         iterator _handle_elem_found(internal_ptr ptr, multiset_node *val);
         iterator _handle_elem_not_found(internal_ptr ptr);
         const key_type &_get_key(internal_ptr ptr);
-        bool _is_equal_key(const key_type &lhs_key, const key_type &rhs_key) const;
         void _clear_node(internal_ptr tnode);
         size_type _erase_list(internal_ptr erase_ptr);
         void _erase_from_node(internal_ptr erase_ptr);
@@ -593,7 +595,7 @@ namespace adt {
         if (bound == nullptr) {
             return end();
         } else {
-            if (_is_equal_key(bound->data->data, key)) {
+            if (_rbtree_is_equal_key<multiset<Key, Less>>(this, bound->data->data, key)) {
                 return iterator(_sentinel, _rbtree_successor<multiset<Key, Less>>(bound));
             } else {
                 return iterator(_sentinel, bound);
@@ -686,11 +688,6 @@ namespace adt {
     template<typename Key, class Less>
     const multiset_t::key_type &multiset<Key, Less>::_get_key(internal_ptr ptr) {
         return ptr->data->data;
-    }
-
-    template<typename Key, class Less>
-    bool multiset<Key, Less>::_is_equal_key(const key_type &lhs_key, const key_type &rhs_key) const {
-        return !_less(lhs_key, rhs_key) && !_less(rhs_key, lhs_key);
     }
 
     template<typename Key, class Less>

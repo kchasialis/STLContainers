@@ -74,13 +74,13 @@ namespace adt {
             friend class unordered_multimap;
 
             template<class Container, typename R, typename Key, typename Value, typename... Args>
-            friend R _hash_insert(Container *cnt, const Key &key, Value val, Args &&... args);
+            friend R hash_internal::_hash_insert(Container *cnt, const Key &key, Value val, Args &&... args);
 
             template<class Container>
-            friend container::iterator _hash_find(Container *cnt, const container::key_type &key);
+            friend container::iterator hash_internal::_hash_find(Container *cnt, const container::key_type &key);
 
             template<class Container>
-            friend container::find_insert_info _hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash);
+            friend container::find_insert_info hash_internal::_hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash);
 
             using internal_ptr = unordered_multimap::internal_ptr;
 
@@ -209,6 +209,7 @@ namespace adt {
         iterator emplace(Args &&... args);
         iterator erase(const_iterator pos);
         size_type erase(const key_type &key);
+        iterator erase(const_iterator first, const_iterator last);
         void clear() noexcept;
         void swap(unordered_multimap &other);
 
@@ -232,34 +233,34 @@ namespace adt {
         }
 
         template<class Container>
-        friend void _hash_construct(Container *cnt);
+        friend void hash_internal::_hash_construct(Container *cnt);
 
         template<class Container>
-        friend void _hash_destruct(Container *cnt);
-
-        template<class Container>
-        friend void _hash_clear(Container *cnt);
-
-        template<class Container>
-        friend void _hash_rehash(Container *cnt);
-
-        template<class Container>
-        friend container::find_insert_info _hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash);
-
-        template<class Container>
-        friend container::hash_info _hash_get_hash_info(Container *cnt, const container::key_type &key);
-
-        template<class Container>
-        friend void _hash_check_load_factor(Container *cnt, container::size_type, uint64_t hash, container::size_type &pos);
+        friend void hash_internal::_hash_destruct(Container *cnt);
 
         template<class Container, typename R, typename Key, typename Value, typename... Args>
-        friend R _hash_insert(Container *cnt, const Key &key, Value val, Args &&... args);
+        friend R hash_internal::_hash_insert(Container *cnt, const Key &key, Value val, Args &&... args);
 
         template<class Container>
-        friend std::pair<container::size_type, container::size_type> _hash_erase(Container *cnt, container::internal_ptr *ptr, bool erase_all);
+        friend std::pair<container::size_type, container::size_type> hash_internal::_hash_erase(Container *cnt, container::internal_ptr *ptr, bool erase_all);
 
         template<class Container>
-        friend container::iterator _hash_find(Container *cnt, const container::key_type &key);
+        friend void hash_internal::_hash_clear(Container *cnt);
+
+        template<class Container>
+        friend container::iterator hash_internal::_hash_find(Container *cnt, const container::key_type &key);
+
+        template<class Container>
+        friend void hash_internal::_hash_rehash(Container *cnt);
+
+        template<class Container>
+        friend container::hash_info hash_internal::_hash_get_hash_info(Container *cnt, const container::key_type &key);
+
+        template<class Container>
+        friend void hash_internal::_hash_check_load_factor(Container *cnt, container::size_type, uint64_t hash, container::size_type &pos);
+
+        template<class Container>
+        friend container::find_insert_info hash_internal::_hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash);
 
     private:
         void _rehash();
@@ -417,6 +418,15 @@ namespace adt {
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
+    umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::erase(const_iterator first, const_iterator last) {
+        auto it = first._it;
+
+        while (it != last._it) it = erase(it);
+
+        return it;
+    }
+
+    template<typename K, typename V, typename Hash, typename Eq>
     void unordered_multimap<K, V, Hash, Eq>::clear() noexcept {
         _hash_clear<>(this);
         _n_slots = 0;
@@ -496,10 +506,10 @@ namespace adt {
     template<typename K, typename V, typename Hash, typename Eq>
     umultimap_t::iterator unordered_multimap<K, V, Hash, Eq>::_add_to_list(const iterator &it, internal_ptr new_node) {
         new_node->next = *(it._ptr);
-        it = &new_node;
+        *(it._ptr) = new_node;
         _size++;
 
-        return it;
+        return {&new_node};
     }
 
     template<typename K, typename V, typename Hash, typename Eq>
@@ -507,12 +517,12 @@ namespace adt {
         return new multimap_node(val);
     }
 
+
     template<typename K, typename V, typename Hash, typename Eq>
     template<typename P>
     umultimap_t::internal_ptr unordered_multimap<K, V, Hash, Eq>::_construct_new_element(P &&val, typename std::enable_if<std::is_constructible<P&&, value_type>::value, enabler>::type) {
         return new multimap_node(std::forward<value_type>(val));
     }
-
 
     template<typename K, typename V, typename Hash, typename Eq>
     umultimap_t::internal_ptr unordered_multimap<K, V, Hash, Eq>::_construct_new_element(internal_ptr val) {

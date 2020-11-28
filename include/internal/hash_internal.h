@@ -146,6 +146,27 @@ namespace hash_internal {
             pos = mod(pos + 1, cnt->_capacity);
         }
     }
+
+    template<class Container>
+    container::iterator _hash_find(Container *cnt, const container::key_type &key) {
+        size_t pos;
+
+        if (cnt->empty()) return cnt->end();
+
+        auto info = cnt->_get_hash_info(key);
+        pos = info.pos;
+
+        while (1) {
+            if (is_empty_slot(cnt->_ctrls[pos])) return cnt->end();
+
+            if (is_full_slot(cnt->_ctrls[pos]) && cnt->_ctrls[pos] == info.h2_hash) {
+                if (cnt->_keq(cnt->_get_slot_key(cnt->_slots[pos]), key)) {
+                    return container::iterator(&cnt->_slots[pos]);
+                }
+            }
+            pos = mod(pos + 1, cnt->_capacity);
+        }
+    }
     
     template<class Container>
     std::pair<container::size_type, container::size_type> _hash_erase(Container *cnt, container::internal_ptr *ptr, bool erase_all) {
@@ -192,27 +213,6 @@ namespace hash_internal {
             cnt->_size = 0;
             cnt->_capacity = 16;
             cnt->_first_elem_pos = cnt->_capacity;
-        }
-    }
-
-    template<class Container>
-    container::iterator _hash_find(Container *cnt, const container::key_type &key) {
-        size_t pos;
-        
-        if (cnt->empty()) return cnt->end();
-
-        auto info = cnt->_get_hash_info(key);
-        pos = info.pos;
-
-        while (1) {
-            if (is_empty_slot(cnt->_ctrls[pos])) return cnt->end();
-
-            if (is_full_slot(cnt->_ctrls[pos]) && cnt->_ctrls[pos] == info.h2_hash) {
-                if (cnt->_keq(cnt->_get_slot_key(cnt->_slots[pos]), key)) {
-                    return container::iterator(&cnt->_slots[pos]);
-                }
-            }
-            pos = mod(pos + 1, cnt->_capacity);
         }
     }
 

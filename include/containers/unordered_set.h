@@ -159,6 +159,7 @@ namespace adt {
         std::pair<iterator, bool> emplace(Args&&... args);
         iterator erase(const_iterator pos);
         size_type erase(const value_type &val);
+        iterator erase(const_iterator first, const_iterator last);
         void clear() noexcept;
         void swap(unordered_set& other);
 
@@ -341,6 +342,15 @@ namespace adt {
     template<typename Key, class Hash, class Eq>
     uset_t::size_type unordered_set<Key, Hash, Eq>::erase(const key_type &key) {
         return _erase(find(key)._ptr).second;
+    }
+
+    template<typename Key, class Hash, class Eq>
+    uset_t::iterator unordered_set<Key, Hash, Eq>::erase(const_iterator first, const_iterator last) {
+        auto it = first;
+
+        while (it != last) it = erase(it);
+
+        return it;
     }
 
     template<typename Key, class Hash, class Eq>

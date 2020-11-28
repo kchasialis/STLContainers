@@ -436,10 +436,15 @@ namespace rbtree_internal {
     }
 
     template<class Container>
+    bool _rbtree_is_equal_key(Container *cnt, const container::key_type &lhs_key, const container::key_type &rhs_key) {
+        return !cnt->_less(lhs_key, rhs_key) && !cnt->_less(rhs_key, lhs_key);
+    }
+
+    template<class Container>
     rb_node<container::node_type> *_rbtree_find_bound(Container *cnt, rb_node<container::node_type> *tnode, const container::key_type &key) {
         if (tnode == nullptr) return nullptr;
 
-        if (cnt->_is_equal_key(cnt->_get_key(tnode), key)) return tnode;
+        if (_rbtree_is_equal_key<Container>(cnt, cnt->_get_key(tnode), key)) return tnode;
 
         if (cnt->_less(cnt->_get_key(tnode), key)) return _rbtree_find_bound(cnt, tnode->right, key);
 

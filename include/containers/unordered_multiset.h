@@ -30,7 +30,7 @@ namespace adt {
 
     private:
         struct hash_info {
-            size_t pos;
+            size_type pos;
             uint64_t hash;
             ctrl_t h2_hash;
         };
@@ -38,8 +38,8 @@ namespace adt {
         struct find_insert_info {
             iterator it;
             bool found_deleted;
-            size_t del_pos;
-            size_t empty_pos;
+            size_type del_pos;
+            size_type empty_pos;
         };
 
         struct multiset_node {
@@ -71,13 +71,13 @@ namespace adt {
             friend class unordered_multiset;
 
             template<class Container, typename R, typename K, typename V, typename... Args>
-            friend R _hash_insert(Container *cnt, const K &key, V val, Args &&... args);
+            friend R hash_internal::_hash_insert(Container *cnt, const K &key, V val, Args &&... args);
 
             template<class Container>
-            friend container::iterator _hash_find(Container *cnt, const container::key_type &key);
+            friend container::iterator hash_internal::_hash_find(Container *cnt, const container::key_type &key);
 
             template<class Container>
-            friend container::find_insert_info _hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash);
+            friend container::find_insert_info hash_internal::_hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash);
 
             using internal_ptr = unordered_multiset::internal_ptr;
 
@@ -138,7 +138,7 @@ namespace adt {
             internal_ptr *_ptr;
             internal_ptr _it;
 
-            iterator(internal_ptr *ptr = nullptr) : _ptr(ptr) {
+            iterator(internal_ptr *ptr) : _ptr(ptr) {
                 _it = _ptr ? *_ptr : nullptr;
             }
         };
@@ -172,6 +172,7 @@ namespace adt {
         iterator emplace(Args &&... args);
         iterator erase(const_iterator pos);
         size_type erase(const key_type &key);
+        iterator erase(const_iterator first, const_iterator last);
         void clear() noexcept;
         void swap(unordered_multiset &other);
 
@@ -195,34 +196,34 @@ namespace adt {
         }
 
         template<class Container>
-        friend void _hash_construct(Container *cnt);
+        friend void hash_internal::_hash_construct(Container *cnt);
 
         template<class Container>
-        friend void _hash_destruct(Container *cnt);
+        friend void hash_internal::_hash_destruct(Container *cnt);
 
         template<class Container>
-        friend void _hash_clear(Container *cnt);
+        friend void hash_internal::_hash_clear(Container *cnt);
 
         template<class Container>
-        friend void _hash_rehash(Container *cnt);
+        friend void hash_internal::_hash_rehash(Container *cnt);
 
         template<class Container>
-        friend container::find_insert_info _hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash);
+        friend container::find_insert_info hash_internal::_hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash);
 
         template<class Container>
-        friend container::hash_info _hash_get_hash_info(Container *cnt, const container::key_type &key);
+        friend container::hash_info hash_internal::_hash_get_hash_info(Container *cnt, const container::key_type &key);
 
         template<class Container>
-        friend void _hash_check_load_factor(Container *cnt, container::size_type, uint64_t hash, container::size_type &pos);
+        friend void hash_internal::_hash_check_load_factor(Container *cnt, container::size_type, uint64_t hash, container::size_type &pos);
 
         template<class Container, typename R, typename K, typename V, typename... Args>
-        friend R _hash_insert(Container *cnt, const K &key, V val, Args &&... args);
+        friend R hash_internal::_hash_insert(Container *cnt, const K &key, V val, Args &&... args);
 
         template<class Container>
-        friend std::pair<container::size_type, container::size_type> _hash_erase(Container *cnt, container::internal_ptr *ptr, bool erase_all);
+        friend container::iterator hash_internal::_hash_find(Container *cnt, const container::key_type &key);
 
         template<class Container>
-        friend container::iterator _hash_find(Container *cnt, const container::key_type &key);
+        friend std::pair<container::size_type, container::size_type> hash_internal::_hash_erase(Container *cnt, container::internal_ptr *ptr, bool erase_all);
 
     private:
         void _rehash();
@@ -363,17 +364,26 @@ namespace adt {
     template<typename Key, class Hash, class Eq>
     umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::erase(const_iterator pos) {
 
-        if ((*(pos._it._ptr))->next != nullptr) {
-          _erase(pos._it._ptr, false);
-          return pos._it;
+        if ((*(pos._ptr))->next != nullptr) {
+          _erase(pos._ptr, false);
+          return pos._ptr;
         } else {
-          return iterator(&(_slots[_erase(pos._it._ptr, false).first]));
+          return iterator(&(_slots[_erase(pos._ptr, false).first]));
         }
     }
 
     template<typename Key, class Hash, class Eq>
     umultiset_t::size_type unordered_multiset<Key, Hash, Eq>::erase(const key_type &key) {
         return _erase(find(key)._ptr, true).second;
+    }
+
+    template<typename Key, class Hash, class Eq>
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::erase(const_iterator first, const_iterator last) {
+        auto it = first;
+
+        while (it != last) it = erase(it);
+
+        return it;
     }
 
     template<typename Key, class Hash, class Eq>
@@ -451,10 +461,10 @@ namespace adt {
     template<typename Key, class Hash, class Eq>
     umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::_add_to_list(const iterator &it, internal_ptr new_node) {
         new_node->next = *(it._ptr);
-        it = &new_node;
+        *(it._ptr) = new_node;
         _size++;
 
-        return it;
+        return {&new_node};
     }
 
     template<typename Key, class Hash, class Eq>

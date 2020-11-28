@@ -73,15 +73,9 @@ namespace adt {
             iterator(iterator &&other) = default;
 
             iterator &operator=(const iterator &rhs) = default;
-            iterator &operator=(internal_ptr ptr) {
-                this->_ptr = ptr;
-                return *this;
-            }
 
             bool operator==(const iterator &rhs) const { return this->_ptr == rhs._ptr; }
-            bool operator==(internal_ptr ptr) const { return this->_ptr == ptr; }
             bool operator!=(const iterator &rhs) const { return !(*this == rhs); }
-            bool operator!=(internal_ptr ptr) const { return !(*this == ptr); }
 
             /* Inorder successor algorithm. */
             iterator &operator++() {
@@ -159,7 +153,7 @@ namespace adt {
             internal_ptr _sentinel;
             internal_ptr _ptr;
 
-            iterator(internal_ptr sentinel, internal_ptr ptr = nullptr) : _sentinel(sentinel), _ptr(ptr) {}
+            iterator(internal_ptr sentinel = nullptr, internal_ptr ptr = nullptr) : _sentinel(sentinel), _ptr(ptr) {}
         };
 
         class reverse_iterator {
@@ -177,15 +171,9 @@ namespace adt {
             reverse_iterator(reverse_iterator &&other) = default;
 
             reverse_iterator &operator=(const reverse_iterator &rhs) = default;
-            reverse_iterator &operator=(internal_ptr ptr) {
-                this->_it = ptr;
-                return *this;
-            }
 
             bool operator==(const reverse_iterator &rhs) const { return this->_it == rhs._it; }
-            bool operator==(internal_ptr ptr) const { return this->_it == ptr; }
             bool operator!=(const reverse_iterator &rhs) const { return !(*this == rhs); }
-            bool operator!=(internal_ptr ptr) const { return !(*this == ptr); }
 
             reverse_iterator &operator++() {
                 --_it;
@@ -216,7 +204,7 @@ namespace adt {
         private:
             iterator _it;
 
-            reverse_iterator(internal_ptr sentinel, internal_ptr ptr) : _it(sentinel, ptr) {}
+            reverse_iterator(internal_ptr sentinel = nullptr, internal_ptr ptr = nullptr) : _it(sentinel, ptr) {}
         };
 
         /* Constructors/Destructors.  */
@@ -325,6 +313,9 @@ namespace adt {
         friend container::iterator rbtree_internal::_rbtree_find(Container *cnt, const container::key_type &key);
 
         template<class Container>
+        friend bool rbtree_internal::_rbtree_is_equal_key(Container *cnt, const container::key_type &lhs_key, const container::key_type &rhs_key);
+
+        template<class Container>
         friend rb_node<container::node_type> *rbtree_internal::_rbtree_find_bound(Container *cnt, rb_node<container::node_type> *tnode, const container::key_type &key);
 
     private:
@@ -336,7 +327,6 @@ namespace adt {
         std::pair<iterator, bool> _handle_elem_found(internal_ptr ptr, to_delete obj);
         std::pair<iterator, bool> _handle_elem_not_found(internal_ptr ptr);
         const key_type &_get_key(internal_ptr tnode);
-        bool _is_equal_key(const key_type &lhs_key, const key_type &rhs_key) const;
         void _clear_node(internal_ptr tnode);
         std::pair<rb_node<node_type> *, size_type> _erase(const_iterator pos);
     };
@@ -568,7 +558,7 @@ namespace adt {
         if (bound == nullptr) {
             return end();
         } else {
-            if (_is_equal_key(bound->data, key)) {
+            if (_rbtree_is_equal_key<set<Key, Less>>(this, bound->data, key)) {
                 return iterator(_sentinel, _rbtree_successor<set<Key, Less>>(bound));
             } else {
                 return iterator(_sentinel, bound);
@@ -646,11 +636,6 @@ namespace adt {
     template<typename Key, class Less>
     const set_t::key_type &set<Key, Less>::_get_key(rb_node<node_type> *tnode) {
         return tnode->data;
-    }
-
-    template<typename Key, class Less>
-    bool set<Key, Less>::_is_equal_key(const key_type &lhs_key, const key_type &rhs_key) const {
-        return !_less(lhs_key, rhs_key) && !_less(rhs_key, lhs_key);
     }
 
     template<typename Key, class Less>

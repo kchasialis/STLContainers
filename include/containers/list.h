@@ -152,7 +152,7 @@ namespace adt {
         private:
             iterator _it;
 
-            const_iterator(list_node *ptr) : _it(ptr) {};
+            const_iterator(list_node *ptr = nullptr) : _it(ptr) {};
         };
 
         class reverse_iterator {
@@ -167,8 +167,8 @@ namespace adt {
             using const_pointer = list::const_pointer;
             using difference_type = list::difference_type;
 
-            /* Implicit conversion from iterator.  */
-            reverse_iterator(iterator it) : _it(std::move(it)) {}
+            reverse_iterator(const reverse_iterator &other) = default;
+            reverse_iterator(reverse_iterator &&other) = default;
 
             bool operator==(const reverse_iterator &other) const { return this->_it == other._it; }
             bool operator==(list_node *ptr) const { return _it == ptr; }
@@ -179,12 +179,20 @@ namespace adt {
                 --_it;
                 return *this;
             }
-            reverse_iterator operator++(int) { return _it--; }
+            reverse_iterator operator++(int) &{
+                auto temp(*this);
+                --_it;
+                return temp;
+            }
             reverse_iterator &operator--() {
                 ++_it;
                 return *this;
             }
-            reverse_iterator operator--(int) { return _it++; }
+            reverse_iterator operator--(int) &{
+                auto temp(*this);
+                ++_it;
+                return temp;
+            }
 
             reference operator*() { return *_it; }
             const_reference operator*() const { return *_it; }
@@ -194,7 +202,7 @@ namespace adt {
         private:
             iterator _it;
 
-            reverse_iterator(list_node *ptr) : _it(ptr) {};
+            reverse_iterator(list_node *ptr = nullptr) : _it(ptr) {};
         };
 
         class const_reverse_iterator {
@@ -232,7 +240,7 @@ namespace adt {
         private:
             reverse_iterator _it;
 
-            const_reverse_iterator(list_node *ptr) : _it(ptr) {};
+            const_reverse_iterator(list_node *ptr = nullptr) : _it(ptr) {};
         };
 
         /* Constructors/Destructors.  */

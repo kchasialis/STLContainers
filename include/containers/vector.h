@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <cassert>
 #include <cstdlib>
 
 #define vector_t typename vector<T>
@@ -59,6 +60,10 @@ namespace adt {
             bool operator==(internal_ptr ptr) const { return this->_ptr == ptr; }
             bool operator!=(const iterator &rhs) const { return !(*this == rhs); }
             bool operator!=(internal_ptr ptr) const { return !(*this == ptr); }
+            bool operator<(const iterator &rhs) const { return this->_ptr < rhs._ptr; }
+            bool operator<=(const iterator &rhs) const { return this->_ptr <= rhs._ptr; }
+            bool operator>(const iterator &rhs) const { return this->_ptr > rhs._ptr;}
+            bool operator>=(const iterator &rhs) const { return this->_ptr >= rhs._ptr; }
 
             iterator &operator+=(difference_type val) {
                 _ptr += val;
@@ -103,6 +108,9 @@ namespace adt {
             }
             difference_type operator-(const iterator &other) { return std::distance(other._ptr, this->_ptr); }
 
+
+            reference operator[](size_type n) { return _ptr[n]; }
+            const_reference operator[](size_type n) const { return _ptr[n]; }
             reference operator*() { return *_ptr; }
             const_reference operator*() const { return *_ptr; }
             pointer operator->() { return _ptr; }
@@ -111,7 +119,7 @@ namespace adt {
         private:
             internal_ptr _ptr;
 
-            iterator(internal_ptr ptr) : _ptr(ptr) {}
+            iterator(internal_ptr ptr = nullptr) : _ptr(ptr) {}
         };
 
         class const_iterator {
@@ -138,6 +146,10 @@ namespace adt {
             bool operator==(internal_ptr ptr) const { return _it == ptr; }
             bool operator!=(const const_iterator &other) const { return !(*this == other); }
             bool operator!=(internal_ptr ptr) const { return !(*this == ptr); }
+            bool operator<(const const_iterator &rhs) const { return this->_it < rhs._it; }
+            bool operator<=(const const_iterator &rhs) const { return this->_it <= rhs._it; }
+            bool operator>(const const_iterator &rhs) const { return this->_it > rhs._it;}
+            bool operator>=(const const_iterator &rhs) const { return this->_it >= rhs._it; }
 
             const_iterator &operator+=(difference_type val) {
                 _it += val;
@@ -157,17 +169,19 @@ namespace adt {
                 return *this;
             }
             const_iterator operator--(int) & { return _it--; }
+
             const_iterator operator+(const std::ptrdiff_t &val) & { return _it + val; }
             const_iterator operator-(const std::ptrdiff_t &val) & { return _it - val; }
             difference_type operator-(const const_iterator &other) { return this->_it - other._it; }
 
+            reference operator[](size_type n) { return _it[n]; }
             reference operator*() const { return *_it; }
             pointer operator->() const { return _it.operator->(); }
 
         private:
             iterator _it;
 
-            const_iterator(internal_ptr ptr) : _it(ptr) {}
+            const_iterator(internal_ptr ptr = nullptr) : _it(ptr) {}
         };
 
         class reverse_iterator {
@@ -193,9 +207,11 @@ namespace adt {
             }
 
             bool operator==(const reverse_iterator &other) const { return this->_it == other._it; }
-            bool operator==(internal_ptr ptr) const { return _it == ptr; }
             bool operator!=(const reverse_iterator &other) const { return !(*this == other); }
-            bool operator!=(internal_ptr ptr) const { return !(*this == ptr); }
+            bool operator<(const reverse_iterator &rhs) const { return this->_it < rhs._it; }
+            bool operator<=(const reverse_iterator &rhs) const { return this->_it <= rhs._it; }
+            bool operator>(const reverse_iterator &rhs) const { return this->_it > rhs._it;}
+            bool operator>=(const reverse_iterator &rhs) const { return this->_it >= rhs._it; }
 
             reverse_iterator &operator+=(difference_type val) {
                 _it -= val;
@@ -219,6 +235,8 @@ namespace adt {
             reverse_iterator operator-(const std::ptrdiff_t &val) & { return _it + val; }
             difference_type operator-(const reverse_iterator &other) { return _it + other._it; }
 
+            reference operator[](size_type n) { return _it[n]; }
+            const_reference operator[](size_type n) const { return _it[n]; }
             reference operator*() { return *_it; }
             const_reference operator*() const { return *_it; }
             pointer operator->() { return _it.operator->(); }
@@ -227,7 +245,7 @@ namespace adt {
         private:
             iterator _it;
 
-            reverse_iterator(internal_ptr ptr) : _it(ptr) {}
+            reverse_iterator(internal_ptr ptr = nullptr) : _it(ptr) {}
         };
 
         class const_reverse_iterator {
@@ -251,9 +269,11 @@ namespace adt {
             }
 
             bool operator==(const const_reverse_iterator &other) const { return this->_it == other._it; }
-            bool operator==(internal_ptr ptr) const { return _it == ptr; }
             bool operator!=(const const_reverse_iterator &other) const { return !(*this == other); }
-            bool operator!=(internal_ptr ptr) const { return !(*this == ptr); }
+            bool operator<(const const_reverse_iterator &rhs) const { return this->_it < rhs._it; }
+            bool operator<=(const const_reverse_iterator &rhs) const { return this->_it <= rhs._it; }
+            bool operator>(const const_reverse_iterator &rhs) const { return this->_it > rhs._it;}
+            bool operator>=(const const_reverse_iterator &rhs) const { return this->_it >= rhs._it; }
 
             const_reverse_iterator &operator+=(difference_type val) {
                 _it += val;
@@ -277,20 +297,21 @@ namespace adt {
             const_reverse_iterator operator-(const std::ptrdiff_t &val) & { return _it - val; }
             difference_type operator-(const const_reverse_iterator &other) { return _it._ptr - other._ptr; }
 
+            reference operator[](size_type n) { return _it[n]; }
             reference operator*() const { return *_it; }
             pointer operator->() const { return _it.operator->(); }
 
         private:
             reverse_iterator _it;
 
-            const_reverse_iterator(internal_ptr ptr) : _it(ptr) {}
+            const_reverse_iterator(internal_ptr ptr = nullptr) : _it(ptr) {}
         };
 
         /* Constructors/Destructors.  */
         vector();
         explicit vector(size_t n);
-        vector(size_t n, const value_type &val);
-        vector(size_t n, value_type &&val);
+        vector(size_type n, const value_type &val);
+        vector(size_type n, value_type &&val);
         vector(const vector& other);
         vector(vector&& other) noexcept;
         ~vector();
