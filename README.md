@@ -106,8 +106,9 @@ vector's iterators are random-access iterators.
 
 
 ### Benchmarks vs STL vector
-    ![Vector benchmarks](https://github.com/kchasialis/STLContainers/blob/master/benchmarks/vector_benchmarks.png)
-
+   
+   ![vector benchmarks](https://github.com/kchasialis/STLContainers/blob/master/benchmarks/vector_benchmarks.png)
+    
 ## adt::list
 
 list is implemented using doubly-linked list with a sentinel node, allowing for fast insertion on both ends
@@ -203,7 +204,7 @@ list's iterators are bidirectional iterators.
     void reverse() noexcept;
 
 ### Benchmarks vs STL list
-    To be added.
+   ![list benchmarks](https://github.com/kchasialis/STLContainers/blob/master/benchmarks/list_benchmarks.png)
 
 ## adt::set
 
@@ -288,7 +289,7 @@ set's iterators are bidirectional iterators.
     std::pair<const_iterator, const_iterator> equal_range(const key_type &key) const;
 
 ### Benchmarks vs STL set
-    To be added.
+   ![set benchmarks](https://github.com/kchasialis/STLContainers/blob/master/benchmarks/set_benchmarks.png)
 
 ## adt::multiset
 
@@ -375,7 +376,7 @@ multiset's iterators are bidirectional iterators.
     std::pair<const_iterator, const_iterator> equal_range(const key_type &key) const;
 
 ### Benchmarks vs STL multiset
-    To be added.
+   ![multiset benchmarks](https://github.com/kchasialis/STLContainers/blob/master/benchmarks/multiset_benchmarks.png)
 
 ## adt::map
 
@@ -470,7 +471,7 @@ maps's iterators are bidirectional iterators.
     std::pair<const_iterator, const_iterator> equal_range(const key_type &key) const;
 
 ### Benchmarks vs STL map
-    To be added.
+   ![map benchmarks](https://github.com/kchasialis/STLContainers/blob/master/benchmarks/map_benchmarks.png)
 
 ## adt::multimap
 
@@ -562,7 +563,7 @@ multimap's iterators are bidirectional iterators.
     std::pair<const_iterator, const_iterator> equal_range(const key_type &key) const;
 
 ### Benchmarks vs STL multimap
-    To be added.
+   ![multimap benchmarks](https://github.com/kchasialis/STLContainers/blob/master/benchmarks/multimap_benchmarks.png)
 
 ## adt::unordered_set
 
@@ -702,7 +703,7 @@ unordered_set's iterators are forward iterators.
     std::pair<const_iterator, const_iterator> equal_range(const key_type &key) const;
 
 ### Benchmarks vs STL unordered_set
-    To be added.
+   ![unordered_set benchmarks](https://github.com/kchasialis/STLContainers/blob/master/benchmarks/unordered_set_benchmarks.png)
 
 ## adt::unordered_multiset
 
@@ -775,7 +776,8 @@ unordered_multiset's iterators are forward iterators.
         std::pair<iterator, const_iterator> equal_range(const key_type &key) const;
 
 ### Benchmarks vs STL unordered_multiset
-    To be added.
+   ![unordered_multiset benchmarks](https://github.com/kchasialis/STLContainers/blob/master/benchmarks/unordered_multiset_benchmarks.png)
+
 
 ## adt::unordered_map
 
@@ -858,8 +860,7 @@ unordered_map's iterators are forward iterators.
 
         
 ### Benchmarks vs STL unordered_map
-    To be added.
-
+   ![unordered_map benchmarks](https://github.com/kchasialis/STLContainers/blob/master/benchmarks/unordered_benchmarks.png)
 
 ## adt::unordered_multimap
 
@@ -935,7 +936,7 @@ unordered_multimap's iterators are forward iterators.
     std::pair<iterator, const_iterator> equal_range(const key_type &key) const;
 
 ### Benchmarks vs STL unordered_multimap
-    To be added.
+   ![unordered_multimap benchmarks](https://github.com/kchasialis/STLContainers/blob/master/benchmarks/unordered_multimap_benchmarks.png)
 
 # License
 
