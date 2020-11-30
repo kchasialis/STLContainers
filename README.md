@@ -613,9 +613,9 @@ without looking at _slots array that maybe cause inefficiency.
 The inspiration behind this implementation is this [talk](https://www.youtube.com/watch?v=ncHmEUmJZf4&t=1765s)
 from CppCon.  
 
-example pseudocode of find(key)
-
 ```
+example pseudocode of find(key):
+
 h1_hash = h1(hash);
 pos = h1_hash % capacity;  
 while (1) {
