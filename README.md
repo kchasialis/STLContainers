@@ -106,7 +106,7 @@ vector's iterators are random-access iterators.
 
 
 ### Benchmarks vs STL vector
-    To be added.
+    ![Vector benchmarks](https://github.com/kchasialis/STLContainers/blob/master/benchmarks/vector_benchmarks.png)
 
 ## adt::list
 
