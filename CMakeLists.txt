@@ -7,3 +7,4 @@ include_directories(include/containers)
 include_directories(include/internal)
 
 add_executable(main main.cpp)
+add_executable(benchmarks benchmarks.cpp)

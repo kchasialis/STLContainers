@@ -637,7 +637,7 @@ namespace adt {
 
             while (n-- > 0) _insert(pos, val);
         } else {
-            ret_it = pos;
+            ret_it = pos._it;
         }
 
         return ret_it;

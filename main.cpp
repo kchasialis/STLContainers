@@ -1506,20 +1506,41 @@ void run_unordered_multimap_test() {
 }
 
 void run_pqueue_test() {
+    adt::pqueue<int> max_heap;
+    adt::pqueue<int, std::greater<int>> min_heap;
 
+    max_heap.push(15);
+    max_heap.push(-15);
+    max_heap.push(25);
+    max_heap.push(105);
+    max_heap.push(250);
+    max_heap.push(100);
+
+    /* assert the max value is on top since its a max_heap.  */
+    CONTAINERS_ASSERT(max_heap.top() == std::max({15, -15, 25, 105, 250, 100}));
+
+    min_heap.push(15);
+    min_heap.push(-15);
+    min_heap.push(25);
+    min_heap.push(105);
+    min_heap.push(250);
+    min_heap.push(100);
+
+    /* assert the min value is on top since its a min_heap.  */
+    CONTAINERS_ASSERT(min_heap.top() == std::min({15, -15, 25, 105, 250, 100}));
 }
 
 int main() {
-    run_list_test();
-    run_vector_test();
-    run_set_test();
-    run_multiset_test();
-    run_map_test();
-    run_multimap_test();
-    run_unordered_set_test();
-    run_unordered_multiset_test();
-    run_unordered_map_test();
-    run_unordered_multimap_test();
+//    run_list_test();
+//    run_vector_test();
+//    run_set_test();
+//    run_multiset_test();
+//    run_map_test();
+//    run_multimap_test();
+//    run_unordered_set_test();
+//    run_unordered_multiset_test();
+//    run_unordered_map_test();
+//    run_unordered_multimap_test();
     run_pqueue_test();
 
     return 0;    

@@ -609,6 +609,9 @@ What this does is that it allows us to probe only on
 the _ctrls array (i.e. in cache)
 without looking at _slots array that maybe cause inefficiency.  
 
+The inspiration behind this implementation is this [talk](https://www.youtube.com/watch?v=ncHmEUmJZf4&t=1765s)
+from CppCon.  
+
 example pseudocode of find(key)
 
 ```

@@ -344,7 +344,7 @@ namespace adt {
     }
 
     template<typename Key, class Hash, class Eq>
-    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::insert(const_reference val) {
+    umultiset_t::iterator unordered_multiset<Key, Hash, Eq>::insert(const value_type &val) {
         return _hash_insert<unordered_multiset<Key, Hash, Eq>, iterator, key_type, const_reference>(this, val, val, val);
     }
 

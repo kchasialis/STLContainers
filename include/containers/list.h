@@ -50,13 +50,16 @@ namespace adt {
             }
         };
 
-        list_node *_head;
-        list_node *_sentinel;
+        using internal_ptr = list_node *;
+
+        internal_ptr _head;
+        internal_ptr _sentinel;
         size_t _size{};
 
     public:
         class iterator {
             friend class list;
+            using internal_ptr = list::internal_ptr;
 
         public:
             using iterator_category = std::bidirectional_iterator_tag;
@@ -71,16 +74,14 @@ namespace adt {
             iterator(iterator &&other) = default;
         
             iterator &operator=(const iterator &other) = default;
-            iterator &operator=(list_node *ptr) {
+            iterator &operator=(internal_ptr ptr) {
                 this->_ptr = ptr;
                 return *this;
             }
 
             bool operator==(const iterator &rhs) const { return this->_ptr == rhs._ptr; }
-            bool operator==(list_node *ptr) const { return this->_ptr == ptr; }
             bool operator!=(const iterator &rhs) const { return !(*this == rhs); }
-            bool operator!=(list_node *ptr) const { return !(*this == ptr); }
-            
+
             iterator& operator++() {
                 if (_ptr) {
                     _ptr = _ptr->next;
@@ -112,13 +113,14 @@ namespace adt {
             const_pointer operator->() const { return &(_ptr->data); }
 
         private:
-            list_node *_ptr;
+            internal_ptr _ptr;
 
-            iterator(list_node *ptr = nullptr) : _ptr(ptr) {}
+            iterator(internal_ptr ptr = nullptr) : _ptr(ptr) {}
         };
 
         class const_iterator {
             friend class list;
+            using internal_ptr = list::internal_ptr;
 
         public:
             using iterator_category = std::bidirectional_iterator_tag;
@@ -130,10 +132,14 @@ namespace adt {
             /* Implicit conversion from iterator.  */
             const_iterator(iterator it) : _it(std::move(it)) {}
 
+            const_iterator &operator=(const const_iterator &other) = default;
+            const_iterator &operator=(internal_ptr ptr) {
+                this->_it = ptr;
+                return *this;
+            }
+
             bool operator==(const const_iterator &other) const { return this->_it == other._it; }
-            bool operator==(list_node *ptr) const { return _it == ptr; }
             bool operator!=(const const_iterator &other) const { return !(*this == other); }
-            bool operator!=(list_node *ptr) const { return !(*this == ptr); }
 
             reference operator*() const { return *_it; }
             pointer operator->() const { return _it.operator->(); }
@@ -152,11 +158,12 @@ namespace adt {
         private:
             iterator _it;
 
-            const_iterator(list_node *ptr = nullptr) : _it(ptr) {};
+            const_iterator(internal_ptr ptr = nullptr) : _it(ptr) {};
         };
 
         class reverse_iterator {
             friend class list;
+            using internal_ptr = list::internal_ptr;
 
         public:
             using iterator_category = std::bidirectional_iterator_tag;
@@ -170,10 +177,16 @@ namespace adt {
             reverse_iterator(const reverse_iterator &other) = default;
             reverse_iterator(reverse_iterator &&other) = default;
 
+            reverse_iterator &operator=(const reverse_iterator &other) = default;
+            reverse_iterator &operator=(internal_ptr ptr) {
+                this->_it = ptr;
+                return *this;
+            }
+
             bool operator==(const reverse_iterator &other) const { return this->_it == other._it; }
-            bool operator==(list_node *ptr) const { return _it == ptr; }
+            bool operator==(internal_ptr ptr) const { return _it == ptr; }
             bool operator!=(const reverse_iterator &other) const { return !(*this == other); }
-            bool operator!=(list_node *ptr) const { return !(*this == ptr); }
+            bool operator!=(internal_ptr ptr) const { return !(*this == ptr); }
 
             reverse_iterator &operator++() {
                 --_it;
@@ -202,7 +215,7 @@ namespace adt {
         private:
             iterator _it;
 
-            reverse_iterator(list_node *ptr = nullptr) : _it(ptr) {};
+            reverse_iterator(internal_ptr ptr = nullptr) : _it(ptr) {};
         };
 
         class const_reverse_iterator {
@@ -218,10 +231,14 @@ namespace adt {
             /* Implicit conversion from iterator.  */
             const_reverse_iterator(reverse_iterator it) : _it(std::move(it)) {}
 
+            const_reverse_iterator &operator=(const const_reverse_iterator &other) = default;
+            const_reverse_iterator &operator=(internal_ptr ptr) {
+                this->_it = ptr;
+                return *this;
+            }
+
             bool operator==(const const_reverse_iterator &other) const { return this->_it == other._it; }
-            bool operator==(list_node *ptr) const { return _it == ptr; }
             bool operator!=(const const_reverse_iterator &other) const { return !(*this == other); }
-            bool operator!=(list_node *ptr) const { return !(*this == ptr); }
 
             const_reverse_iterator &operator++() {
                 ++_it;
@@ -240,7 +257,7 @@ namespace adt {
         private:
             reverse_iterator _it;
 
-            const_reverse_iterator(list_node *ptr = nullptr) : _it(ptr) {};
+            const_reverse_iterator(internal_ptr ptr = nullptr) : _it(ptr) {};
         };
 
         /* Constructors/Destructors.  */

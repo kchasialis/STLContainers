@@ -76,6 +76,8 @@ namespace adt {
                 this->_ptr = rhs._ptr;
                 this->_inner_ptr = rhs._ptr ? rhs._ptr->data : nullptr;
                 this->_sentinel = rhs._sentinel;
+
+                return *this;
             }
 
             bool operator==(const iterator &rhs) const { return this->_ptr == rhs._ptr; }
@@ -316,7 +318,7 @@ namespace adt {
         private:
             reverse_iterator _it;
 
-            const_reverse_iterator(internal_ptr sentinel = nullptr, internal_ptr ptr = = nullptr) : _it(sentinel, ptr) {}
+            const_reverse_iterator(internal_ptr sentinel = nullptr, internal_ptr ptr = nullptr) : _it(sentinel, ptr) {}
         };
 
         /* Constructors/Destructors.  */
