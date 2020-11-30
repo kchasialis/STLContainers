@@ -1532,7 +1532,7 @@ void run_pqueue_test() {
 
 int main() {
 //    run_list_test();
-//    run_vector_test();
+    run_vector_test();
 //    run_set_test();
 //    run_multiset_test();
 //    run_map_test();
@@ -1541,7 +1541,7 @@ int main() {
 //    run_unordered_multiset_test();
 //    run_unordered_map_test();
 //    run_unordered_multimap_test();
-    run_pqueue_test();
+//    run_pqueue_test();
 
     return 0;    
 }

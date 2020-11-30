@@ -952,5 +952,6 @@ See LICENSE.md for more information.
  * sdi1600195@di.uoa.gr
  
 # Thoughts
- * Maybe implement some more functionality like more constructors, try_emplace() etc.
- 
+ * Maybe implement some extra functionality like more constructors, try_emplace() etc.
+ * I believe that a sorted array will be a more efficient implementation (due to 
+ cache hit-rate being higher) than rbtrees for sorted containers, maybe try this approach. 

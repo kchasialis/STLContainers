@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cassert>
 #include <cstdlib>
+#include <cstring>
 
 #define vector_t typename vector<T>
 
@@ -682,7 +683,8 @@ namespace adt {
         if (pos != end()) {
             std::ptrdiff_t shift_idx = pos - begin();
             _data[shift_idx].~value_type();
-            for (size_type i = shift_idx ; i < _size - 1; i++) _data[i] = std::move(_data[i + 1]);
+            /* Shift all elements one position left.  */
+            memmove(&_data[shift_idx], &_data[shift_idx + 1], sizeof(value_type) * ((_size - 1) - shift_idx));
             _size--;
 
             return iterator(&(_data[shift_idx]));
