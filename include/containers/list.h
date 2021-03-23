@@ -674,7 +674,7 @@ namespace adt {
 
     template<typename T>
     void list<T>::reverse() noexcept {
-        list_node *prev, *current = _head, *cached_head = _head;
+        list_node *prev = nullptr, *current = _head, *cached_head = _head;
         /* Temporarily pretend we dont have a sentinel node.  */
         _sentinel->previous->next = nullptr;
         _head->previous = nullptr;

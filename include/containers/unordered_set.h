@@ -4,7 +4,7 @@
 #include <cassert>
 #include <functional>
 
-#include "hash_internal.h"
+#include "../internal/hash_internal.h"
 
 #define uset_t typename unordered_set<Key, Hash, Eq>
 

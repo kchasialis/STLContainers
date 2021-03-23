@@ -4,7 +4,7 @@
 #include <cassert>
 #include <functional>
 
-#include "hash_internal.h"
+#include "../internal/hash_internal.h"
 
 #define umultiset_t typename unordered_multiset<Key, Hash, Eq>
 

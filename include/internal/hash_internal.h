@@ -94,7 +94,7 @@ namespace hash_internal {
     template<class Container>
     container::find_insert_info _hash_find_or_prepare_insert(Container *cnt, const container::key_type &key, container::size_type pos, ctrl_t h2_hash) {
         bool found_deleted;
-        size_t empty_pos, del_pos;
+        size_t empty_pos = 0, del_pos = 0;
 
         found_deleted = false;
         while (1) {

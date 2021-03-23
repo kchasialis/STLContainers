@@ -4,7 +4,7 @@
 #include <cassert>
 #include <functional>
 
-#include "hash_internal.h"
+#include "../internal/hash_internal.h"
 
 #define umultimap_t typename unordered_multimap<K, V, Hash, Eq>
 

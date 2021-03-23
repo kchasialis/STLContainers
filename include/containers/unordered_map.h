@@ -4,7 +4,7 @@
 #include <cassert>
 #include <functional>
 
-#include "hash_internal.h"
+#include "../internal/hash_internal.h"
 
 #define umap typename unordered_map<K, V, Hash, Eq>
 

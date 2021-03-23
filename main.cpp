@@ -3,17 +3,17 @@
 #include <map>
 #include <utility>
 
-#include "list.h"
-#include "vector.h"
-#include "set.h"
-#include "multiset.h"
-#include "map.h"
-#include "multimap.h"
-#include "unordered_set.h"
-#include "unordered_multiset.h"
-#include "unordered_map.h"
-#include "unordered_multimap.h"
-#include "pqueue.h"
+#include "include/containers/list.h"
+#include "include/containers/vector.h"
+#include "include/containers/set.h"
+#include "include/containers/multiset.h"
+#include "include/containers/map.h"
+#include "include/containers/multimap.h"
+#include "include/containers/unordered_set.h"
+#include "include/containers/unordered_multiset.h"
+#include "include/containers/unordered_map.h"
+#include "include/containers/unordered_multimap.h"
+#include "include/containers/pqueue.h"
 
 #define CONTAINERS_ASSERT(cond)                                            \
     do {                                                                         \
@@ -180,7 +180,7 @@ void run_vector_test() {
     adt::vector<int> myints(3);
     size_t sum, test_sum;
 
-    srand(time(NULL));
+    srand((unsigned int) time(nullptr));
 
     CONTAINERS_ASSERT(myints.size() == 3);
 
@@ -252,7 +252,7 @@ void run_vector_test() {
     auto insert_it = myints.begin();
     sum = 0;
     for (size_t i = 0 ; i < ELEMENTS ; i++, insert_it++) {
-        insert_it = myints.insert(insert_it, i);
+        insert_it = myints.insert(insert_it, (int) i);
         CONTAINERS_ASSERT(*insert_it == i);
         sum += i;
     }
@@ -274,8 +274,8 @@ void run_vector_test() {
     insert_it = myints.begin();
     sum = 0;
     for (size_t i = 0 ; i < ELEMENTS ; i++, insert_it++) {
-        insert_it = myints.emplace(insert_it, i);
-        CONTAINERS_ASSERT(*insert_it == i);
+        insert_it = myints.emplace(insert_it, (int) i);
+        CONTAINERS_ASSERT(*insert_it == (int) i);
         sum += i;
     }
     CONTAINERS_ASSERT(myints.size() == ELEMENTS);
@@ -296,7 +296,7 @@ void run_vector_test() {
     CONTAINERS_ASSERT(myints.empty());
 
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        myints.push_back(i);
+        myints.push_back((int) i);
     }
     CONTAINERS_ASSERT(myints.size() == ELEMENTS);
 
@@ -315,7 +315,7 @@ void run_vector_test() {
     /* operator[] assignment test.  */
     sum = 0;
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        myints[i] = i;
+        myints[i] = (int) i;
         sum += i;
     }
     CONTAINERS_ASSERT(myints.size() == ELEMENTS);
@@ -380,14 +380,14 @@ void run_set_test() {
     std::set<int> std_set_test;
     size_t sum, test_sum, n_elems_test, index;
 
-    srand(time(nullptr));
+    srand((unsigned int) time(nullptr));
 
     /* insert(), find() test.  */
     sum = 0;
     n_elems_test = 0;
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
         auto val = i;
-        if (set_test.find(val) == set_test.end()) {
+        if (set_test.find((int) val) == set_test.end()) {
             auto p = set_str_test.insert(std::to_string(val));
             CONTAINERS_ASSERT(*(p.first) == std::to_string(val));
             CONTAINERS_ASSERT(p.second);
@@ -476,8 +476,8 @@ void run_set_test() {
 
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
         auto val = i;
-        std_set_test.insert(val);
-        auto p = set_test.insert(val);
+        std_set_test.insert((int) val);
+        auto p = set_test.insert((int) val);
         CONTAINERS_ASSERT(*(p.first) == val);
         CONTAINERS_ASSERT(p.second);
     }
@@ -502,7 +502,7 @@ void run_set_test() {
 
     /* equal_range() test.  */
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        auto myrange = set_test.equal_range(i);
+        auto myrange = set_test.equal_range((int) i);
         index = 0;
         for (auto it = myrange.first ; it != myrange.second ; it++, index++) {
             CONTAINERS_ASSERT(*it == i);
@@ -516,7 +516,7 @@ void run_set_test() {
 
     /* count() test.  */
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        CONTAINERS_ASSERT(set_test.count(i) == 1);
+        CONTAINERS_ASSERT(set_test.count((int) i) == 1);
     }
 
     CONTAINERS_ASSERT(set_test.count(-15) == 0);
@@ -532,7 +532,7 @@ void run_multiset_test() {
     std::multiset<int> std_multiset_test;
     size_t sum, test_sum, n_elems_test, index;
 
-    srand(time(nullptr));
+    srand((unsigned int) time(nullptr));
 
     /* insert(), find() test.  */
     sum = 0;
@@ -628,8 +628,8 @@ void run_multiset_test() {
 
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
         for (size_t j = 0 ; j < EXTRA_ELEMENTS ; j++) {
-            std_multiset_test.insert(i);
-            auto p = multiset_test.insert(i);
+            std_multiset_test.insert((int) i);
+            auto p = multiset_test.insert((int) i);
             CONTAINERS_ASSERT(*p == i);
         }
     }
@@ -654,7 +654,7 @@ void run_multiset_test() {
 
     /* equal_range() test.  */
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        auto myrange = multiset_test.equal_range(i);
+        auto myrange = multiset_test.equal_range((int) i);
         index = 0;
         for (auto it = myrange.first ; it != myrange.second ; it++, index++) {
             CONTAINERS_ASSERT(*it == i);
@@ -668,7 +668,7 @@ void run_multiset_test() {
 
     /* count() test.  */
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        CONTAINERS_ASSERT(multiset_test.count(i) == EXTRA_ELEMENTS);
+        CONTAINERS_ASSERT(multiset_test.count((int) i) == EXTRA_ELEMENTS);
     }
 
     CONTAINERS_ASSERT(multiset_test.count(-15) == 0);
@@ -684,7 +684,7 @@ void run_map_test() {
     std::map<int, std::string> std_map_test;
     size_t sum, test_sum, n_elems_test, index;
 
-    srand(time(nullptr));
+    srand((unsigned int) time(nullptr));
 
     /* operator[] test.  */
     map_test[3] = "kostas";
@@ -797,9 +797,9 @@ void run_map_test() {
 
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
         auto val = i;
-        if (map_test.find(val) == map_test.end()) {
+        if (map_test.find((int) val) == map_test.end()) {
             std_map_test.insert({val, std::to_string(val)});
-            auto p = map_test.insert({val, std::to_string(val)});
+            map_test.insert({val, std::to_string((int) val)});
         }
     }
 
@@ -825,7 +825,7 @@ void run_map_test() {
 
     /* equal_range() test.  */
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        auto myrange = map_test.equal_range(i);
+        auto myrange = map_test.equal_range((int) i);
         index = 0;
         for (auto it = myrange.first ; it != myrange.second ; it++, index++) {
             CONTAINERS_ASSERT(it->first == i);
@@ -839,7 +839,7 @@ void run_map_test() {
 
     /* count() test.  */
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        CONTAINERS_ASSERT(map_test.count(i) == 1);
+        CONTAINERS_ASSERT(map_test.count((int) i) == 1);
     }
 
     CONTAINERS_ASSERT(map_test.count(-15) == 0);
@@ -855,7 +855,7 @@ void run_multimap_test() {
     std::multimap<int, std::string> std_multimap_test;
     size_t sum, test_sum, n_elems_test, index;
 
-    srand(time(nullptr));
+    srand((unsigned int) time(nullptr));
 
     /* insert(), find() test.  */
     sum = 0;
@@ -987,7 +987,7 @@ void run_multimap_test() {
 
     /* equal_range() test.  */
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        auto myrange = multimap_test.equal_range(i);
+        auto myrange = multimap_test.equal_range((int) i);
         index = 0;
         for (auto it = myrange.first ; it != myrange.second ; it++, index++) {
             CONTAINERS_ASSERT(it->first == i);
@@ -1002,7 +1002,7 @@ void run_multimap_test() {
 
     /* count() test.  */
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        CONTAINERS_ASSERT(multimap_test.count(i) == EXTRA_ELEMENTS);
+        CONTAINERS_ASSERT(multimap_test.count((int) i) == EXTRA_ELEMENTS);
     }
 
     CONTAINERS_ASSERT(multimap_test.count(-15) == 0);
@@ -1016,7 +1016,7 @@ void run_unordered_set_test() {
     adt::unordered_set<int> uset_test;
     size_t sum, test_sum, n_elems_test, index;
 
-    srand(time(nullptr));
+    srand((unsigned int) time(nullptr));
 
     /* insert(), find() test.  */
     sum = 0;
@@ -1099,14 +1099,14 @@ void run_unordered_set_test() {
     CONTAINERS_ASSERT(uset_test.begin() == uset_test.end());
 
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        auto p = uset_test.insert(i);
+        auto p = uset_test.insert((int) i);
         CONTAINERS_ASSERT(*(p.first) == i);
         CONTAINERS_ASSERT(p.second);
     }
 
     /* equal_range() test.  */
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        auto myrange = uset_test.equal_range(i);
+        auto myrange = uset_test.equal_range((int) i);
         index = 0;
         for (auto it = myrange.first ; it != myrange.second ; it++, index++) {
             CONTAINERS_ASSERT(*it == i);
@@ -1120,7 +1120,7 @@ void run_unordered_set_test() {
 
     /* count() test.  */
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        CONTAINERS_ASSERT(uset_test.count(i) == 1);
+        CONTAINERS_ASSERT(uset_test.count((int) i) == 1);
     }
 
     CONTAINERS_ASSERT(uset_test.count(-15) == 0);
@@ -1130,7 +1130,7 @@ void run_unordered_multiset_test() {
     adt::unordered_multiset<int> umultiset_test;
     size_t sum, test_sum, n_elems_test, index;
 
-    srand(time(nullptr));
+    srand((unsigned int) time(nullptr));
 
     /* insert(), find() test.  */
     sum = 0;
@@ -1217,14 +1217,14 @@ void run_unordered_multiset_test() {
 
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
         for (size_t j = 0 ; j < EXTRA_ELEMENTS ; j++) {
-            auto p = umultiset_test.insert(i);
+            auto p = umultiset_test.insert((int) i);
             CONTAINERS_ASSERT(*p == i);
         }
     }
 
     /* equal_range() test.  */
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        auto myrange = umultiset_test.equal_range(i);
+        auto myrange = umultiset_test.equal_range((int) i);
         index = 0;
         for (auto it = myrange.first ; it != myrange.second ; it++, index++) {
             CONTAINERS_ASSERT(*it == i);
@@ -1238,7 +1238,7 @@ void run_unordered_multiset_test() {
 
     /* count() test.  */
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        CONTAINERS_ASSERT(umultiset_test.count(i) == EXTRA_ELEMENTS);
+        CONTAINERS_ASSERT(umultiset_test.count((int) i) == EXTRA_ELEMENTS);
     }
 
     CONTAINERS_ASSERT(umultiset_test.count(-15) == 0);
@@ -1248,7 +1248,7 @@ void run_unordered_map_test() {
     adt::unordered_map<int, std::string> umap_test;
     size_t sum, test_sum, n_elems_test, index;
 
-    srand(time(nullptr));
+    srand((unsigned int) time(nullptr));
 
     /* operator[] test.  */
     umap_test[3] = "kostas";
@@ -1352,14 +1352,14 @@ void run_unordered_map_test() {
 
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
         auto val = i;
-        if (umap_test.find(val) == umap_test.end()) {
+        if (umap_test.find((int) val) == umap_test.end()) {
             umap_test.insert({val, std::to_string(val)});
         }
     }
 
     /* equal_range() test.  */
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        auto myrange = umap_test.equal_range(i);
+        auto myrange = umap_test.equal_range((int) i);
         index = 0;
         for (auto it = myrange.first ; it != myrange.second ; it++, index++) {
             CONTAINERS_ASSERT(it->first == i);
@@ -1373,7 +1373,7 @@ void run_unordered_map_test() {
 
     /* count() test.  */
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        CONTAINERS_ASSERT(umap_test.count(i) == 1);
+        CONTAINERS_ASSERT(umap_test.count((int)i) == 1);
     }
 
     CONTAINERS_ASSERT(umap_test.count(-15) == 0);
@@ -1383,7 +1383,7 @@ void run_unordered_multimap_test() {
     adt::unordered_multimap<int, std::string> umultimap_test;
     size_t sum, test_sum, n_elems_test, index;
 
-    srand(time(nullptr));
+    srand((unsigned int) time(nullptr));
 
     /* insert(), find() test.  */
     sum = 0;
@@ -1484,7 +1484,7 @@ void run_unordered_multimap_test() {
 
     /* equal_range() test.  */
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        auto myrange = umultimap_test.equal_range(i);
+        auto myrange = umultimap_test.equal_range((int) i);
         index = 0;
         for (auto it = myrange.first ; it != myrange.second ; it++, index++) {
             CONTAINERS_ASSERT(it->first == i);
@@ -1499,7 +1499,7 @@ void run_unordered_multimap_test() {
 
     /* count() test.  */
     for (size_t i = 0 ; i < ELEMENTS ; i++) {
-        CONTAINERS_ASSERT(umultimap_test.count(i) == EXTRA_ELEMENTS);
+        CONTAINERS_ASSERT(umultimap_test.count((int) (int)i) == EXTRA_ELEMENTS);
     }
 
     CONTAINERS_ASSERT(umultimap_test.count(-15) == 0);
@@ -1531,17 +1531,17 @@ void run_pqueue_test() {
 }
 
 int main() {
-//    run_list_test();
+    run_list_test();
     run_vector_test();
-//    run_set_test();
-//    run_multiset_test();
-//    run_map_test();
-//    run_multimap_test();
-//    run_unordered_set_test();
-//    run_unordered_multiset_test();
-//    run_unordered_map_test();
-//    run_unordered_multimap_test();
-//    run_pqueue_test();
+    run_set_test();
+    run_multiset_test();
+    run_map_test();
+    run_multimap_test();
+    run_unordered_set_test();
+    run_unordered_multiset_test();
+    run_unordered_map_test();
+    run_unordered_multimap_test();
+    run_pqueue_test();
 
     return 0;    
 }
